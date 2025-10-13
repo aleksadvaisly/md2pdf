@@ -56,7 +56,7 @@ func testit(inputf string, gohighlight bool, t *testing.T) {
 		CustomThemeFile: "",
 	}
 	r := NewPdfRenderer(params)
-	r.Extensions = parser.NoIntraEmphasis | parser.Tables | parser.FencedCode | parser.Autolink | parser.Strikethrough | parser.SpaceHeadings | parser.HeadingIDs | parser.BackslashLineBreak | parser.DefinitionLists
+	r.Extensions = parser.NoIntraEmphasis | parser.Tables | parser.FencedCode | parser.Autolink | parser.Strikethrough | parser.SpaceHeadings | parser.HeadingIDs | parser.BackslashLineBreak | parser.DefinitionLists | parser.OrderedListStart
 	err = r.Process(content)
 	if err != nil {
 		t.Error(err)

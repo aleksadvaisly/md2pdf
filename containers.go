@@ -57,8 +57,9 @@ type containerState struct {
 	firstParagraph    bool
 
 	// populated if node type is a list
-	listkind   listType
-	itemNumber int // only if an ordered list
+	listkind             listType
+	itemNumber           int // last emitted number for ordered lists or count for unordered
+	orderedCounterBackup int
 
 	// populated if node type is a link
 	destination string

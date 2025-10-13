@@ -101,16 +101,32 @@ func TestStripCheckboxMarker(t *testing.T) {
 }
 
 func TestEnsureCheckboxListSpacing(t *testing.T) {
-	input := "**Block**  \n- [ ] one\n- [ ] two\n"
-	expected := "**Block**  \n\n- [ ] one\n- [ ] two\n"
-	result := ensureCheckboxListSpacing([]byte(input))
-	if string(result) != expected {
-		t.Fatalf("expected %q got %q", expected, string(result))
+	cases := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "checkbox after forced break",
+			input:    "**Block**  \n- [ ] one\n- [ ] two\n",
+			expected: "**Block**  \n\n- [ ] one\n- [ ] two\n",
+		},
+		{
+			name:     "numbered list after forced break",
+			input:    "Intro line  \n1. First\n2. Second\n",
+			expected: "Intro line  \n\n1. First\n2. Second\n",
+		},
+		{
+			name:     "nested list remains intact",
+			input:    "1. Parent\n   - Child\n",
+			expected: "1. Parent\n   - Child\n",
+		},
 	}
 
-	alreadySeparated := "**Block**\n\n- [ ] one\n"
-	out := ensureCheckboxListSpacing([]byte(alreadySeparated))
-	if string(out) != alreadySeparated {
-		t.Fatalf("expected unchanged content")
+	for _, tc := range cases {
+		result := ensureCheckboxListSpacing([]byte(tc.input))
+		if string(result) != tc.expected {
+			t.Fatalf("%s: expected %q got %q", tc.name, tc.expected, string(result))
+		}
 	}
 }

@@ -283,7 +283,7 @@ func main() {
 	}
 	pf.Pdf.SetSubject(*title, true)
 	pf.Pdf.SetTitle(*title, true)
-	pf.Extensions = parser.NoIntraEmphasis | parser.Tables | parser.FencedCode | parser.Autolink | parser.Strikethrough | parser.SpaceHeadings | parser.HeadingIDs | parser.BackslashLineBreak | parser.DefinitionLists | parser.HardLineBreak
+	pf.Extensions = parser.NoIntraEmphasis | parser.Tables | parser.FencedCode | parser.Autolink | parser.Strikethrough | parser.SpaceHeadings | parser.HeadingIDs | parser.BackslashLineBreak | parser.DefinitionLists | parser.HardLineBreak | parser.OrderedListStart
 
 	if *printFooter {
 		pf.Pdf.SetFooterFunc(func() {

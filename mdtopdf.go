@@ -207,7 +207,7 @@ func ExtractTextFromNode(node ast.Node) string {
 func GetTOCEntries(content []byte) ([]TOCEntry, error) {
 
 	// Create parser with extensions
-	extensions := parser.CommonExtensions | parser.AutoHeadingIDs
+	extensions := parser.CommonExtensions | parser.AutoHeadingIDs | parser.OrderedListStart
 	p := parser.NewWithExtensions(extensions)
 
 	// Parse the markdown content
@@ -814,7 +814,7 @@ func ensureCheckboxListSpacing(content []byte) []byte {
 
 	result := make([]string, 0, len(lines)+8)
 	for _, line := range lines {
-		if isCheckboxListLine(line) && len(result) > 0 {
+		if isListLikeLine(line) && len(result) > 0 {
 			prev := result[len(result)-1]
 			if strings.TrimSpace(prev) != "" && !isListMarkerLine(prev) {
 				result = append(result, "")
@@ -826,29 +826,38 @@ func ensureCheckboxListSpacing(content []byte) []byte {
 	return []byte(strings.Join(result, "\n"))
 }
 
-func isCheckboxListLine(line string) bool {
-	trimmed := strings.TrimLeft(line, " \t")
-	return strings.HasPrefix(trimmed, "- [")
+func isListMarkerLine(line string) bool {
+	return isListLikeLine(strings.TrimSpace(line))
 }
 
-func isListMarkerLine(line string) bool {
-	trimmed := strings.TrimSpace(line)
+func isListLikeLine(line string) bool {
+	trimmed := strings.TrimLeft(line, " \t")
 	if trimmed == "" {
 		return false
 	}
 
-	if strings.HasPrefix(trimmed, "- ") || strings.HasPrefix(trimmed, "* ") || strings.HasPrefix(trimmed, "+ ") {
+	if strings.HasPrefix(trimmed, "- ") || strings.HasPrefix(trimmed, "* ") || strings.HasPrefix(trimmed, "+ ") || strings.HasPrefix(trimmed, "-\t") {
 		return true
 	}
 
-	for i := 0; i < len(trimmed); i++ {
-		if trimmed[i] < '0' || trimmed[i] > '9' {
-			if (trimmed[i] == '.' || trimmed[i] == ')') && i+1 < len(trimmed) && trimmed[i+1] == ' ' {
-				return i > 0
+	if strings.HasPrefix(trimmed, "- [") {
+		return true
+	}
+
+	i := 0
+	for i < len(trimmed) && trimmed[i] >= '0' && trimmed[i] <= '9' {
+		i++
+	}
+	if i > 0 && i < len(trimmed) {
+		delim := trimmed[i]
+		if (delim == '.' || delim == ')') && i+1 < len(trimmed) {
+			next := trimmed[i+1]
+			if next == ' ' || next == '\t' {
+				return true
 			}
-			return false
 		}
 	}
+
 	return false
 }
 

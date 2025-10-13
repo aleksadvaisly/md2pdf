@@ -235,11 +235,20 @@ func (r *PdfRenderer) processList(node ast.List, entering bool) {
 		r.tracer("... List Left Margin",
 			fmt.Sprintf("set to %v", newLeftMargin))
 		x := &containerState{
-			textStyle:         r.Normal,
-			itemNumber:        0,
-			listkind:          kind,
-			leftMargin:        newLeftMargin,
-			contentLeftMargin: newLeftMargin}
+			textStyle:            r.Normal,
+			itemNumber:           0,
+			listkind:             kind,
+			leftMargin:           newLeftMargin,
+			contentLeftMargin:    newLeftMargin,
+			orderedCounterBackup: r.orderedListCounter}
+		if kind == ordered {
+			start := node.Start
+			if start <= 0 {
+				start = 1
+			}
+			r.orderedListCounter = start - 1
+			x.itemNumber = start - 1
+		}
 		r.cs.push(x)
 	} else {
 		r.tracer(fmt.Sprintf("%v List (leaving)", kind),
@@ -247,6 +256,9 @@ func (r *PdfRenderer) processList(node ast.List, entering bool) {
 		r.Pdf.SetLeftMargin(r.cs.peek().leftMargin - r.IndentValue)
 		r.tracer("... Reset List Left Margin",
 			fmt.Sprintf("re-set to %v", r.cs.peek().leftMargin-r.IndentValue))
+		if r.cs.peek().listkind == ordered {
+			r.orderedListCounter = r.cs.peek().orderedCounterBackup
+		}
 		r.cs.pop()
 		if len(r.cs.stack) < 2 {
 			r.cr()
@@ -305,29 +317,33 @@ func stripCheckboxMarker(item *ast.ListItem) (string, bool) {
 
 func (r *PdfRenderer) processItem(node *ast.ListItem, entering bool) {
 	if entering {
+		parent := r.cs.peek()
 		var itemNum int
-		if r.cs.peek().listkind == ordered {
+		if parent.listkind == ordered {
 			r.orderedListCounter++
 			itemNum = r.orderedListCounter
+			parent.itemNumber = itemNum
 		} else {
-			itemNum = r.cs.peek().itemNumber + 1
+			parent.itemNumber++
+			itemNum = parent.itemNumber
 		}
 
 		r.tracer(fmt.Sprintf("%v Item (entering) #%v",
-			r.cs.peek().listkind, itemNum),
+			parent.listkind, itemNum),
 			fmt.Sprintf("%v", ast.ToString(node.AsContainer())))
 		r.cr() // newline before getting started
 		x := &containerState{
 			textStyle:         r.Normal,
 			itemNumber:        itemNum,
-			listkind:          r.cs.peek().listkind,
+			listkind:          parent.listkind,
 			firstParagraph:    true,
-			leftMargin:        r.cs.peek().leftMargin,
-			contentLeftMargin: r.cs.peek().leftMargin}
+			leftMargin:        parent.leftMargin,
+			contentLeftMargin: parent.leftMargin}
 		// add bullet or itemnumber; then set left margin for the
 		// text/paragraphs in the item
 		r.cs.push(x)
 		// Set cursor X position to leftMargin before rendering bullet/number
+		r.setStyler(r.cs.peek().textStyle)
 		r.Pdf.SetX(r.cs.peek().leftMargin)
 		var checkboxSymbol string
 		if r.cs.peek().listkind == unordered {
@@ -386,10 +402,6 @@ func (r *PdfRenderer) processItem(node *ast.ListItem, entering bool) {
 			fmt.Sprintf("%v", ast.ToString(node.AsContainer())))
 		// before we output the new line, reset left margin
 		r.Pdf.SetLeftMargin(r.cs.peek().leftMargin)
-		// Only increment parent itemNumber for non-ordered lists (ordered uses global counter)
-		if r.cs.peek().listkind != ordered {
-			r.cs.parent().itemNumber++
-		}
 		r.cs.pop()
 	}
 }
