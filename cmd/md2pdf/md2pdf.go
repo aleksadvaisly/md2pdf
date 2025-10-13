@@ -24,11 +24,8 @@ var output = flag.String("o", "", "Output PDF filename; required")
 var pathToSyntaxFiles = flag.String("s", "", "Path to github.com/jessp01/gohighlight/syntax_files")
 var title = flag.String("title", "", "Presentation title")
 var author = flag.String("author", "", "Author's name; used if -footer is passed")
-var unicodeSupport = flag.String("unicode-encoding", "", "e.g 'cp1251'")
-var fontFile = flag.String("font-file", "", "path to font file to use")
-var fontName = flag.String("font-name", "", "Font name ID; e.g 'Helvetica-1251'")
 var fontFamily = flag.String("font-family", "Times", "System font family [Times | Helvetica | Courier] (default: Times)")
-var presetFont = flag.String("font", "", "Predefined Unicode font [dejavu_sans | dejavu_serif | noto_sans | roboto]")
+var presetFont = flag.String("font", "eb_garamond", "Predefined Unicode font [dejavu_sans | dejavu_serif | noto_sans | roboto | eb_garamond | merriweather | source_serif]")
 var themeArg = flag.String("theme", "light", "[light | dark | /path/to/custom/theme.json]")
 var noNewPage = flag.Bool("no-new-page", false, "Don't interpret HR (---) as page break")
 var printFooter = flag.Bool("with-footer", false, "Print doc footer (<author>  <title>  <page number>)")
@@ -79,10 +76,13 @@ func loadPresetFont(fontName string) error {
 		"dejavu_serif": true,
 		"noto_sans":    true,
 		"roboto":       true,
+		"eb_garamond":  true,
+		"merriweather": true,
+		"source_serif": true,
 	}
 
 	if _, exists := validFonts[fontName]; !exists {
-		return fmt.Errorf("unknown preset font: %s (available: dejavu_sans, dejavu_serif, noto_sans, roboto)", fontName)
+		return fmt.Errorf("unknown preset font: %s (available: dejavu_sans, dejavu_serif, noto_sans, roboto, eb_garamond, merriweather, source_serif)", fontName)
 	}
 
 	return nil
@@ -108,10 +108,6 @@ func main() {
 
 	if *noNewPage == true {
 		opts = append(opts, mdtopdf.IsHorizontalRuleNewPage(false))
-	}
-
-	if *unicodeSupport != "" {
-		opts = append(opts, mdtopdf.WithUnicodeTranslator(*unicodeSupport))
 	}
 
 	if *pathToSyntaxFiles != "" {
@@ -212,9 +208,7 @@ func main() {
 		themeFile = *themeArg
 	}
 
-	// Validate preset font if specified
 	if *presetFont != "" {
-		// Warn if both flags specified
 		if *fontFamily != "Times" {
 			log.Printf("Warning: Both --font and --font-family specified. --font takes priority.")
 		}
@@ -233,8 +227,6 @@ func main() {
 		Opts:            opts,
 		Theme:           theme,
 		CustomThemeFile: themeFile,
-		FontFile:        *fontFile,
-		FontName:        *fontName,
 		DefaultFont:     *fontFamily,
 		PresetFont:      *presetFont,
 	}
@@ -284,20 +276,6 @@ func main() {
 	pf.Pdf.SetSubject(*title, true)
 	pf.Pdf.SetTitle(*title, true)
 	pf.Extensions = parser.NoIntraEmphasis | parser.Tables | parser.FencedCode | parser.Autolink | parser.Strikethrough | parser.SpaceHeadings | parser.HeadingIDs | parser.BackslashLineBreak | parser.DefinitionLists | parser.HardLineBreak
-
-	if *fontFile != "" && *fontName != "" {
-		fmt.Println(*fontFile)
-		// pf.Pdf.AddUTF8Font(*fontName, "", *fontFile)
-		pf.Pdf.AddFont(*fontName, "", *fontFile)
-		pf.Pdf.SetFont(*fontName, "", 12)
-		pf.Normal = mdtopdf.Styler{
-			Font:  *fontName,
-			Style: "",
-			Size:  12, Spacing: 2,
-			TextColor: pf.Normal.TextColor,
-		}
-
-	}
 
 	if *printFooter {
 		pf.Pdf.SetFooterFunc(func() {

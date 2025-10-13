@@ -138,13 +138,9 @@ annotation name must match the syntax base filename.*
   -author string
     	Author name; used if -footer is passed
   -font string
-    	Predefined Unicode font [dejavu_sans | dejavu_serif | noto_sans | roboto]
+    	Predefined Unicode font [dejavu_sans | dejavu_serif | noto_sans | roboto | eb_garamond | merriweather | source_serif] (default: eb_garamond)
   -font-family string
     	System font family [Times | Helvetica | Courier] (default: Times)
-  -font-file string
-    	path to font file to use
-  -font-name string
-    	Font name ID; e.g 'Helvetica-1251'
   -generate-toc
     	Auto Generate Table of Contents (TOC)
   -help
@@ -167,8 +163,6 @@ annotation name must match the syntax base filename.*
     	[light | dark | /path/to/custom/theme.json] (default "light")
   -title string
     	Presentation title
-  -unicode-encoding string
-    	e.g 'cp1251'
   -version
     	Print version and build info
   -with-footer
@@ -191,24 +185,23 @@ $ go run md2pdf.go  -i /path/to/md \
 
 ## Using non-ASCII Glyphs/Fonts
 
-To use a non-ASCII language, the PDF generator must be configured with `WithUnicodeTranslator`:
+`md2pdf` includes several preset Unicode fonts that support a wide range of characters and languages:
 
-```go
-// https://en.wikipedia.org/wiki/Windows-1251
-pf := mdtopdf.NewPdfRenderer("", "", *output, "trace.log", mdtopdf.WithUnicodeTranslator("cp1251")) 
-```
+- **dejavu_sans** - DejaVu Sans (sans-serif, excellent Unicode coverage)
+- **dejavu_serif** - DejaVu Serif (serif, excellent Unicode coverage)
+- **noto_sans** - Noto Sans (sans-serif, comprehensive Unicode support)
+- **roboto** - Roboto (sans-serif, modern design)
+- **eb_garamond** - EB Garamond (elegant serif, default)
+- **merriweather** - Merriweather (readable serif)
+- **source_serif** - Source Serif (Adobe serif)
 
-In addition, this package's `Styler` must be used to set the font to match what is configured with the PDF generator.
-
-A complete working example can be found for Russian in the `cmd` folder named
-`russian.go`.
-
-For a full example, run:
+To use a preset Unicode font, simply pass the `--font` flag:
 
 ```sh
-$ go run md2pdf.go -i russian.md -o russian.pdf \
-    --unicode-encoding cp1251 --font-file helvetica_1251.json --font-name Helvetica_1251
+$ md2pdf -i russian.md -o russian.pdf --font dejavu_sans
 ```
+
+The default font is **eb_garamond**, which provides excellent Unicode support for most languages.
 
 ## Tests
 

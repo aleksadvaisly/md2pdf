@@ -54,8 +54,6 @@ func testit(inputf string, gohighlight bool, t *testing.T) {
 		Opts:            opts,
 		Theme:           LIGHT,
 		CustomThemeFile: "",
-		FontFile:        "",
-		FontName:        "",
 	}
 	r := NewPdfRenderer(params)
 	r.Extensions = parser.NoIntraEmphasis | parser.Tables | parser.FencedCode | parser.Autolink | parser.Strikethrough | parser.SpaceHeadings | parser.HeadingIDs | parser.BackslashLineBreak | parser.DefinitionLists

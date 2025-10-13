@@ -22,6 +22,7 @@ package mdtopdf
 
 import (
 	"bufio"
+	"embed"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -35,6 +36,9 @@ import (
 	"github.com/gomarkdown/markdown/ast"
 	"github.com/gomarkdown/markdown/parser"
 )
+
+//go:embed resources/fonts/*/*.ttf resources/fonts/*/LICENSE
+var fontFS embed.FS
 
 // Color is a RGB set of ints; for a nice picker
 // see https://www.w3schools.com/colors/colors_picker.asp
@@ -90,9 +94,8 @@ type PdfRenderer struct {
 	mleft, mtop, mright, mbottom float64
 
 	// normal text
-	Normal            Styler
-	em                float64
-	unicodeTranslator func(string) string
+	Normal Styler
+	em     float64
 
 	// link text
 	Link Styler
@@ -342,22 +345,22 @@ func (r *PdfRenderer) SetCustomTheme(themeJSONFile string) {
 
 // PdfRendererParams struct to hold params passed to NewPdfRenderer
 type PdfRendererParams struct {
-	Orientation, Papersz, PdfFile, TracerFile, FontFile, FontName, DefaultFont string
-	PresetFont                                                                  string
-	Opts                                                                        []RenderOption
-	Theme                                                                       Theme
-	CustomThemeFile                                                             string
+	Orientation, Papersz, PdfFile, TracerFile, DefaultFont string
+	PresetFont                                              string
+	Opts                                                    []RenderOption
+	Theme                                                   Theme
+	CustomThemeFile                                         string
 }
 
 // loadFontSafely loads a font file with proper error handling
-func loadFontSafely(pdf *fpdf.Fpdf, family, style, fontFile string) error {
-	if _, err := os.Stat(fontFile); err != nil {
-		if os.IsNotExist(err) {
-			return fmt.Errorf("font file not found: %s", fontFile)
-		}
-		return fmt.Errorf("cannot access font file '%s': %w", fontFile, err)
+func loadFontSafely(pdf *fpdf.Fpdf, family, style, fontPath string) error {
+	fontData, err := fontFS.ReadFile(fontPath)
+	if err != nil {
+		return fmt.Errorf("embedded font not found: %s: %w", fontPath, err)
 	}
-	pdf.AddUTF8Font(family, style, fontFile)
+
+	pdf.AddUTF8FontFromBytes(family, style, fontData)
+
 	return nil
 }
 
@@ -440,6 +443,30 @@ func NewPdfRenderer(params PdfRendererParams) *PdfRenderer {
 				bold:     "Roboto-Bold.ttf",
 				italic:   "Roboto-Italic.ttf",
 				boldItal: "Roboto-BoldItalic.ttf",
+			},
+			"eb_garamond": {
+				dir:      "resources/fonts/eb_garamond",
+				name:     "EBGaramond",
+				regular:  "EBGaramond-Regular.ttf",
+				bold:     "EBGaramond-Bold.ttf",
+				italic:   "EBGaramond-Italic.ttf",
+				boldItal: "EBGaramond-BoldItalic.ttf",
+			},
+			"merriweather": {
+				dir:      "resources/fonts/merriweather",
+				name:     "Merriweather",
+				regular:  "Merriweather-Regular.ttf",
+				bold:     "Merriweather-Bold.ttf",
+				italic:   "Merriweather-Italic.ttf",
+				boldItal: "Merriweather-BoldItalic.ttf",
+			},
+			"source_serif": {
+				dir:      "resources/fonts/source_serif",
+				name:     "SourceSerif4",
+				regular:  "SourceSerif4-Regular.ttf",
+				bold:     "SourceSerif4-Bold.ttf",
+				italic:   "SourceSerif4-It.ttf",
+				boldItal: "SourceSerif4-BoldIt.ttf",
 			},
 		}
 
@@ -540,13 +567,8 @@ func (r *PdfRenderer) Process(content []byte) error {
 
 // Run takes the markdown content, parses it but don't generate the PDF. you can access the PDF with youRenderer.Pdf
 func (r *PdfRenderer) Run(content []byte) error {
-	// Preprocess content by changing all CRLF to LF
 	s := content
 	s = markdown.NormalizeNewlines(s)
-
-	if r.unicodeTranslator != nil {
-		s = []byte(r.unicodeTranslator(string(s)))
-	}
 
 	p := parser.NewWithExtensions(r.Extensions)
 	doc := markdown.Parse(s, p)
@@ -764,15 +786,6 @@ func (r *PdfRenderer) SetPageBackground(colorStr string, color Color) {
 		color = Colorlookup(colorStr)
 	}
 	dorect(r.Pdf, 0, 0, w, h, color)
-}
-
-// Options
-
-// WithUnicodeTranslator configures a unico translator to support characters for latin, russian, etc..
-func WithUnicodeTranslator(cp string) RenderOption {
-	return func(r *PdfRenderer) {
-		r.unicodeTranslator = r.Pdf.UnicodeTranslatorFromDescriptor(cp)
-	}
 }
 
 // IsHorizontalRuleNewPage if true, will start a new page when encountering a HR (---). Useful for presentations.
