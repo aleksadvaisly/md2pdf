@@ -25,7 +25,7 @@ var pathToSyntaxFiles = flag.StringP("syntax-files", "s", "", "Path to github.co
 var title = flag.String("title", "", "Presentation title")
 var author = flag.String("author", "", "Author's name; used if -footer is passed")
 var fontFamily = flag.String("font-family", "", "System font family [Times | Helvetica | Courier]")
-var presetFont = flag.String("font", "", "Predefined Unicode font [dejavu_sans | dejavu_serif | noto_sans | roboto | eb_garamond | merriweather | source_serif] (default: eb_garamond)")
+var presetFont = flag.String("font", "", "Predefined Unicode font [dejavu_sans | dejavu_serif | noto_sans | roboto | eb_garamond | merriweather | source_serif] (default: source_serif)")
 var themeArg = flag.String("theme", "light", "[light | dark | /path/to/custom/theme.json]")
 var noNewPage = flag.Bool("no-new-page", false, "Don't interpret HR (---) as page break")
 var printFooter = flag.Bool("with-footer", false, "Print doc footer (<author>  <title>  <page number>)")
@@ -106,8 +106,10 @@ func main() {
 		return
 	}
 
-	if *noNewPage == true {
+	if *noNewPage {
 		opts = append(opts, mdtopdf.IsHorizontalRuleNewPage(false))
+	} else {
+		opts = append(opts, mdtopdf.IsHorizontalRuleNewPage(true))
 	}
 
 	if *pathToSyntaxFiles != "" {
@@ -209,7 +211,7 @@ func main() {
 	}
 
 	if *presetFont == "" && *fontFamily == "" {
-		*presetFont = "eb_garamond"
+		*presetFont = "source_serif"
 	}
 
 	if *presetFont != "" {
