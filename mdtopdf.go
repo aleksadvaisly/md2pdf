@@ -732,12 +732,23 @@ func (r *PdfRenderer) RenderNode(w io.Writer, node ast.Node, entering bool) ast.
 		r.tracer("Softbreak", "Output newline")
 		r.cr()
 	case *ast.Hardbreak:
-		r.tracer("Hardbreak", "Output newline with extra spacing")
-		// Add extra spacing for hard breaks (like list items in formatted text)
+		// Add extra spacing for hard breaks, but NOT in lists (lists should be compact)
 		style := r.cs.peek().textStyle
-		extraSpacing := 3.0 // Additional points between lines
+		extraSpacing := 0.0
+		inList := r.cs.peek().listkind != notlist
+
+		if !inList {
+			extraSpacing = 3.0 // Additional points between lines in regular paragraphs
+		}
+
 		LH := style.Size + style.Spacing + extraSpacing
-		r.tracer("cr()", fmt.Sprintf("LH=%.2f (normal=%.2f + extra=%.2f)", LH, style.Size+style.Spacing, extraSpacing))
+		if extraSpacing > 0 {
+			r.tracer("Hardbreak", fmt.Sprintf("Output newline with extra spacing (not in list)"))
+			r.tracer("cr()", fmt.Sprintf("LH=%.2f (normal=%.2f + extra=%.2f)", LH, style.Size+style.Spacing, extraSpacing))
+		} else {
+			r.tracer("Hardbreak", fmt.Sprintf("Output newline (in list, no extra spacing)"))
+			r.tracer("cr()", fmt.Sprintf("LH=%.2f", LH))
+		}
 		r.Pdf.Write(LH, "\n")
 	case *ast.Emph:
 		r.processEmph(node, entering)
