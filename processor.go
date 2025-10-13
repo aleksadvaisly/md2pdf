@@ -333,8 +333,10 @@ func (r *PdfRenderer) processItem(node *ast.ListItem, entering bool) {
 			parent.listkind, itemNum),
 			fmt.Sprintf("%v", ast.ToString(node.AsContainer())))
 		r.cr() // newline before getting started
+		listStyle := r.Normal
+		listStyle.Spacing = r.Normal.Spacing * 0.6
 		x := &containerState{
-			textStyle:         r.Normal,
+			textStyle:         listStyle,
 			itemNumber:        itemNum,
 			listkind:          parent.listkind,
 			firstParagraph:    true,
@@ -381,9 +383,9 @@ func (r *PdfRenderer) processItem(node *ast.ListItem, entering bool) {
 			bulletLabel = "-"
 			labelWidth = r.Pdf.GetStringWidth(bulletLabel)
 		}
-		lineHeight := r.Normal.Size + r.Normal.Spacing
-		gapWidth := 0.5 * r.em
-		minWidth := 2 * r.em
+		lineHeight := x.textStyle.Size + x.textStyle.Spacing
+		gapWidth := 0.35 * r.em
+		minWidth := 1.2 * r.em
 		desiredWidth := math.Max(labelWidth+gapWidth, minWidth)
 		r.Pdf.Write(lineHeight, bulletLabel)
 		// ensure consistent indentation even if glyph width is narrower than desired box

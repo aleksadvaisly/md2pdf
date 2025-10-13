@@ -233,49 +233,49 @@ func (r *PdfRenderer) SetLightTheme() {
 	r.BackgroundColor = Colorlookup("white")
 	r.SetPageBackground("", r.BackgroundColor)
 	// Normal Text
-	r.Normal = Styler{Font: r.DefaultFont, Style: "", Size: 11, Spacing: 5,
+	r.Normal = Styler{Font: r.DefaultFont, Style: "", Size: 11, Spacing: 1.4,
 		TextColor: Colorlookup("black"), FillColor: Colorlookup("white")}
 
 	// Link text
-	r.Link = Styler{Font: r.DefaultFont, Style: "u", Size: 11, Spacing: 5,
+	r.Link = Styler{Font: r.DefaultFont, Style: "u", Size: 11, Spacing: 1.4,
 		TextColor: Color{0, 0, 139}}
 
 	// Backticked text
-	r.Backtick = Styler{Font: "Courier", Style: "", Size: 10, Spacing: 5,
+	r.Backtick = Styler{Font: "Courier", Style: "", Size: 10, Spacing: 1.2,
 		TextColor: Color{37, 27, 14}, FillColor: Color{245, 245, 245}}
 
 	// Quoted Text
 
-	r.Blockquote = Styler{Font: r.DefaultFont, Style: "i", Size: 11, Spacing: 5,
+	r.Blockquote = Styler{Font: r.DefaultFont, Style: "i", Size: 11, Spacing: 1.4,
 		TextColor: Color{60, 60, 60}, FillColor: Color{250, 250, 250}}
 
 	// Code text
-	r.Code = Styler{Font: "Courier", Style: "", Size: 10, Spacing: 5,
+	r.Code = Styler{Font: "Courier", Style: "", Size: 10, Spacing: 1.2,
 		TextColor: Color{37, 27, 14}, FillColor: Color{245, 245, 245}}
 
 	// Headings
-	r.H1 = Styler{Font: r.DefaultFont, Style: "b", Size: 20, Spacing: 8,
+	r.H1 = Styler{Font: r.DefaultFont, Style: "b", Size: 20, Spacing: 5,
 		TextColor: Colorlookup("black"), FillColor: Colorlookup("white")}
-	r.H2 = Styler{Font: r.DefaultFont, Style: "b", Size: 18, Spacing: 7,
+	r.H2 = Styler{Font: r.DefaultFont, Style: "b", Size: 18, Spacing: 4,
 		TextColor: Colorlookup("black"), FillColor: Colorlookup("white")}
-	r.H3 = Styler{Font: r.DefaultFont, Style: "b", Size: 16, Spacing: 6,
+	r.H3 = Styler{Font: r.DefaultFont, Style: "b", Size: 16, Spacing: 3,
 		TextColor: Colorlookup("black"), FillColor: Colorlookup("white")}
-	r.H4 = Styler{Font: r.DefaultFont, Style: "b", Size: 14, Spacing: 5,
+	r.H4 = Styler{Font: r.DefaultFont, Style: "b", Size: 14, Spacing: 2.5,
 		TextColor: Colorlookup("black"), FillColor: Colorlookup("white")}
-	r.H5 = Styler{Font: r.DefaultFont, Style: "b", Size: 13, Spacing: 5,
+	r.H5 = Styler{Font: r.DefaultFont, Style: "b", Size: 13, Spacing: 2.2,
 		TextColor: Colorlookup("black"), FillColor: Colorlookup("white")}
-	r.H6 = Styler{Font: r.DefaultFont, Style: "b", Size: 12, Spacing: 5,
+	r.H6 = Styler{Font: r.DefaultFont, Style: "b", Size: 12, Spacing: 2.2,
 		TextColor: Colorlookup("black"), FillColor: Colorlookup("white")}
 
-	r.Blockquote = Styler{Font: r.DefaultFont, Style: "i", Size: 11, Spacing: 5,
+	r.Blockquote = Styler{Font: r.DefaultFont, Style: "i", Size: 11, Spacing: 1.4,
 		TextColor: Color{60, 60, 60}, FillColor: Colorlookup("white")}
 
 	// Table Header Text
-	r.THeader = Styler{Font: r.DefaultFont, Style: "b", Size: 11, Spacing: 5,
+	r.THeader = Styler{Font: r.DefaultFont, Style: "b", Size: 11, Spacing: 1.4,
 		TextColor: Colorlookup("black"), FillColor: Colorlookup("white")}
 
 	// Table Body Text
-	r.TBody = Styler{Font: r.DefaultFont, Style: "", Size: 11, Spacing: 5,
+	r.TBody = Styler{Font: r.DefaultFont, Style: "", Size: 11, Spacing: 1.4,
 		TextColor: Colorlookup("black"), FillColor: Colorlookup("white")}
 }
 
@@ -284,48 +284,48 @@ func (r *PdfRenderer) SetDarkTheme() {
 	r.BackgroundColor = Colorlookup("black")
 	r.SetPageBackground("", r.BackgroundColor)
 	// Normal Text
-	r.Normal = Styler{Font: r.DefaultFont, Style: "", Size: 11, Spacing: 5,
+	r.Normal = Styler{Font: r.DefaultFont, Style: "", Size: 11, Spacing: 1.4,
 		FillColor: Colorlookup("black"), TextColor: Colorlookup("white")}
 
 	// Quoted Text
-	r.Blockquote = Styler{Font: r.DefaultFont, Style: "i", Size: 11, Spacing: 5,
+	r.Blockquote = Styler{Font: r.DefaultFont, Style: "i", Size: 11, Spacing: 1.4,
 		FillColor: Colorlookup("black"), TextColor: Color{200, 200, 200}}
 
 	// Link text
-	r.Link = Styler{Font: r.DefaultFont, Style: "u", Size: 11, Spacing: 5,
+	r.Link = Styler{Font: r.DefaultFont, Style: "u", Size: 11, Spacing: 1.4,
 		TextColor: Color{100, 149, 237}}
 
 	// Backticked text
-	r.Backtick = Styler{Font: "Courier", Style: "", Size: 10, Spacing: 5,
+	r.Backtick = Styler{Font: "Courier", Style: "", Size: 10, Spacing: 1.2,
 		TextColor: Colorlookup("lightgrey"), FillColor: Color{40, 40, 40}}
 
 	// Code text
-	r.Code = Styler{Font: "Courier", Style: "", Size: 10, Spacing: 5,
+	r.Code = Styler{Font: "Courier", Style: "", Size: 10, Spacing: 1.2,
 		TextColor: Colorlookup("lightgrey"), FillColor: Color{40, 40, 40}}
 
 	// Headings
-	r.H1 = Styler{Font: r.DefaultFont, Style: "b", Size: 20, Spacing: 8,
+	r.H1 = Styler{Font: r.DefaultFont, Style: "b", Size: 20, Spacing: 5,
 		FillColor: Colorlookup("black"), TextColor: Colorlookup("white")}
-	r.H2 = Styler{Font: r.DefaultFont, Style: "b", Size: 18, Spacing: 7,
+	r.H2 = Styler{Font: r.DefaultFont, Style: "b", Size: 18, Spacing: 4,
 		FillColor: Colorlookup("black"), TextColor: Colorlookup("white")}
-	r.H3 = Styler{Font: r.DefaultFont, Style: "b", Size: 16, Spacing: 6,
+	r.H3 = Styler{Font: r.DefaultFont, Style: "b", Size: 16, Spacing: 3,
 		FillColor: Colorlookup("black"), TextColor: Colorlookup("white")}
-	r.H4 = Styler{Font: r.DefaultFont, Style: "b", Size: 14, Spacing: 5,
+	r.H4 = Styler{Font: r.DefaultFont, Style: "b", Size: 14, Spacing: 2.5,
 		FillColor: Colorlookup("black"), TextColor: Colorlookup("white")}
-	r.H5 = Styler{Font: r.DefaultFont, Style: "b", Size: 13, Spacing: 5,
+	r.H5 = Styler{Font: r.DefaultFont, Style: "b", Size: 13, Spacing: 2.2,
 		FillColor: Colorlookup("black"), TextColor: Colorlookup("white")}
-	r.H6 = Styler{Font: r.DefaultFont, Style: "b", Size: 12, Spacing: 5,
+	r.H6 = Styler{Font: r.DefaultFont, Style: "b", Size: 12, Spacing: 2.2,
 		FillColor: Colorlookup("black"), TextColor: Colorlookup("white")}
 
-	r.Blockquote = Styler{Font: r.DefaultFont, Style: "i", Size: 11, Spacing: 5,
+	r.Blockquote = Styler{Font: r.DefaultFont, Style: "i", Size: 11, Spacing: 1.4,
 		FillColor: Colorlookup("black"), TextColor: Color{200, 200, 200}}
 
 	// Table Header Text
-	r.THeader = Styler{Font: r.DefaultFont, Style: "b", Size: 11, Spacing: 5,
+	r.THeader = Styler{Font: r.DefaultFont, Style: "b", Size: 11, Spacing: 1.4,
 		TextColor: Colorlookup("white"), FillColor: Colorlookup("black")}
 
 	// Table Body Text
-	r.TBody = Styler{Font: r.DefaultFont, Style: "", Size: 11, Spacing: 5,
+	r.TBody = Styler{Font: r.DefaultFont, Style: "", Size: 11, Spacing: 1.4,
 		FillColor: Colorlookup("black"), TextColor: Colorlookup("white")}
 
 }
@@ -508,7 +508,7 @@ func NewPdfRenderer(params PdfRendererParams) *PdfRenderer {
 	r.setStyler(r.Normal)
 	r.mleft, r.mtop, r.mright, r.mbottom = r.Pdf.GetMargins()
 	r.em = r.Pdf.GetStringWidth("m")
-	r.IndentValue = 3 * r.em
+	r.IndentValue = 1.5 * r.em
 
 	r.cs = states{stack: make([]*containerState, 0)}
 	initcurrent := &containerState{
