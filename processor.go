@@ -52,9 +52,9 @@ func (r *PdfRenderer) processText(node *ast.Text) {
 	if !r.NeedBlockquoteStyleUpdate {
 		s = strings.ReplaceAll(s, "\n", " ")
 	}
-	s = strings.ReplaceAll(s, "[ ]", "□")
-	s = strings.ReplaceAll(s, "[x]", "■")
-	s = strings.ReplaceAll(s, "[X]", "■")
+	s = strings.ReplaceAll(s, "[ ]", "☐")
+	s = strings.ReplaceAll(s, "[x]", "☑")
+	s = strings.ReplaceAll(s, "[X]", "☑")
 	r.tracer("Text", s)
 
 	if incell {

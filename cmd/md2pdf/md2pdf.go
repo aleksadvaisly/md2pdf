@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -16,12 +15,13 @@ import (
 
 	"github.com/gomarkdown/markdown/parser"
 	"github.com/solworktech/md2pdf/v2"
+	flag "github.com/spf13/pflag"
 	"golang.org/x/exp/slices"
 )
 
-var input = flag.String("i", "", "Input filename, dir consisting of .md|.markdown files or HTTP(s) URL; default is os.Stdin")
-var output = flag.String("o", "", "Output PDF filename; required")
-var pathToSyntaxFiles = flag.String("s", "", "Path to github.com/jessp01/gohighlight/syntax_files")
+var input = flag.StringP("input", "i", "", "Input filename, dir consisting of .md|.markdown files or HTTP(s) URL; default is os.Stdin")
+var output = flag.StringP("output", "o", "", "Output PDF filename; required")
+var pathToSyntaxFiles = flag.StringP("syntax-files", "s", "", "Path to github.com/jessp01/gohighlight/syntax_files")
 var title = flag.String("title", "", "Presentation title")
 var author = flag.String("author", "", "Author's name; used if -footer is passed")
 var fontFamily = flag.String("font-family", "", "System font family [Times | Helvetica | Courier]")
