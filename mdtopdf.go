@@ -233,7 +233,7 @@ func (r *PdfRenderer) SetLightTheme() {
 	r.BackgroundColor = Colorlookup("white")
 	r.SetPageBackground("", r.BackgroundColor)
 	// Normal Text
-	r.Normal = Styler{Font: r.DefaultFont, Style: "", Size: 11, Spacing: 1.4,
+	r.Normal = Styler{Font: r.DefaultFont, Style: "", Size: 11, Spacing: 1.6,
 		TextColor: Colorlookup("black"), FillColor: Colorlookup("white")}
 
 	// Link text
@@ -284,7 +284,7 @@ func (r *PdfRenderer) SetDarkTheme() {
 	r.BackgroundColor = Colorlookup("black")
 	r.SetPageBackground("", r.BackgroundColor)
 	// Normal Text
-	r.Normal = Styler{Font: r.DefaultFont, Style: "", Size: 11, Spacing: 1.4,
+	r.Normal = Styler{Font: r.DefaultFont, Style: "", Size: 11, Spacing: 1.6,
 		FillColor: Colorlookup("black"), TextColor: Colorlookup("white")}
 
 	// Quoted Text
@@ -669,6 +669,7 @@ func (r *PdfRenderer) setStyler(s Styler) {
 	if s.Style == "bb" {
 		s.Style = "b"
 	}
+	r.tracerStyle("setStyler", s)
 	r.Pdf.SetFont(s.Font, s.Style, s.Size)
 	r.Pdf.SetTextColor(s.TextColor.Red, s.TextColor.Green, s.TextColor.Blue)
 	r.Pdf.SetFillColor(s.FillColor.Red, s.FillColor.Green, s.FillColor.Blue)
@@ -676,6 +677,11 @@ func (r *PdfRenderer) setStyler(s Styler) {
 
 func (r *PdfRenderer) write(s Styler, t string) {
 	// fmt.Printf("%s, %#v\n",t, s)
+	if r.tracerFile != "" && t != "\n" {
+		lineHeight := s.Size + s.Spacing
+		r.tracer("write", fmt.Sprintf("text=\"%s\" | lineHeight=%.2f (size=%.1f + spacing=%.1f)",
+			strings.ReplaceAll(t, "\n", "\\n"), lineHeight, s.Size, s.Spacing))
+	}
 	r.Pdf.Write(s.Size+s.Spacing, t)
 }
 
@@ -699,6 +705,26 @@ func (r *PdfRenderer) writeLink(s Styler, display, url string) {
 // traversal to the next node.
 // (above taken verbatim from the blackfriday v2 package)
 func (r *PdfRenderer) RenderNode(w io.Writer, node ast.Node, entering bool) ast.WalkStatus {
+	// Log node entry/exit for debugging
+	if r.tracerFile != "" {
+		action := "ENTER"
+		if !entering {
+			action = "EXIT"
+		}
+		nodeType := fmt.Sprintf("%T", node)
+		// Extract content for certain node types
+		content := ""
+		switch n := node.(type) {
+		case *ast.Text:
+			content = string(n.Literal)
+		case *ast.Code:
+			content = string(n.Literal)
+		case *ast.Heading:
+			content = fmt.Sprintf("level=%d", n.Level)
+		}
+		r.tracerContext(nodeType, action, content)
+	}
+
 	switch node := node.(type) {
 	case *ast.Text:
 		r.processText(node)
@@ -782,6 +808,43 @@ func (r *PdfRenderer) tracer(source, msg string) {
 	if r.tracerFile != "" {
 		indent := strings.Repeat("-", len(r.cs.stack)-1)
 		r.w.WriteString(fmt.Sprintf("%v[%v] %v\n", indent, source, msg))
+	}
+}
+
+// tracerContext logs detailed context information for debugging
+func (r *PdfRenderer) tracerContext(nodeType, action, content string) {
+	if r.tracerFile != "" && r.w != nil && len(r.cs.stack) > 0 {
+		indent := strings.Repeat("  ", len(r.cs.stack)-1)
+		_, y := r.Pdf.GetXY()
+
+		// Truncate content if too long
+		if len(content) > 50 {
+			content = content[:50] + "..."
+		}
+		content = strings.ReplaceAll(content, "\n", "\\n")
+
+		// Get current style
+		style := r.cs.peek().textStyle
+		styleInfo := fmt.Sprintf("font=%s style=%s size=%.1f spacing=%.1f",
+			style.Font, style.Style, style.Size, style.Spacing)
+
+		// Format: [ACTION] NodeType | content="..." | style info | y=position
+		r.w.WriteString(fmt.Sprintf("%s[%s] %s | content=\"%s\" | %s | y=%.2f\n",
+			indent, action, nodeType, content, styleInfo, y))
+	}
+}
+
+// tracerStyle logs style application details
+func (r *PdfRenderer) tracerStyle(source string, s Styler) {
+	if r.tracerFile != "" && r.w != nil {
+		depth := 0
+		if len(r.cs.stack) > 0 {
+			depth = len(r.cs.stack) - 1
+		}
+		indent := strings.Repeat("  ", depth)
+		_, y := r.Pdf.GetXY()
+		r.w.WriteString(fmt.Sprintf("%s[STYLE] %s | font=%s style=%s size=%.1f spacing=%.1f | y=%.2f\n",
+			indent, source, s.Font, s.Style, s.Size, s.Spacing, y))
 	}
 }
 

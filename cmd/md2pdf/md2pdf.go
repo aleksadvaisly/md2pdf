@@ -34,6 +34,7 @@ var generateTOC = flag.Bool("generate-toc", false, "Auto Generate Table of Conte
 var pageSize = flag.String("page-size", "A4", "[A3 | A4 | A5]")
 var orientation = flag.String("orientation", "portrait", "[portrait | landscape]")
 var logFile = flag.String("log-file", "", "Path to log file")
+var debug = flag.Bool("debug", false, "Enable debug logging (creates .log file alongside PDF)")
 var help = flag.Bool("help", false, "Show usage message")
 var ver = flag.Bool("version", false, "Print version and build info")
 var version = "dev"
@@ -226,11 +227,18 @@ func main() {
 		}
 	}
 
+	// Auto-generate log file path for --debug
+	tracerFile := *logFile
+	if *debug && tracerFile == "" {
+		base := strings.TrimSuffix(*output, filepath.Ext(*output))
+		tracerFile = base + ".log"
+	}
+
 	params := mdtopdf.PdfRendererParams{
 		Orientation:     *orientation,
 		Papersz:         *pageSize,
 		PdfFile:         *output,
-		TracerFile:      *logFile,
+		TracerFile:      tracerFile,
 		Opts:            opts,
 		Theme:           theme,
 		CustomThemeFile: themeFile,
