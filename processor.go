@@ -332,9 +332,14 @@ func (r *PdfRenderer) processItem(node *ast.ListItem, entering bool) {
 		r.tracer(fmt.Sprintf("%v Item (entering) #%v",
 			parent.listkind, itemNum),
 			fmt.Sprintf("%v", ast.ToString(node.AsContainer())))
-		r.cr() // newline before getting started
+		// Create list style BEFORE adding newline
 		listStyle := r.Normal
 		listStyle.Spacing = 0.0 // Minimum spacing for very tight lists (was 0.6 × Normal.Spacing)
+
+		// Use list style for the newline (not Normal spacing!)
+		LH := listStyle.Size + listStyle.Spacing
+		r.tracer("cr() with listStyle", fmt.Sprintf("LH=%.2f", LH))
+		r.Pdf.Write(LH, "\n")
 		x := &containerState{
 			textStyle:         listStyle,
 			itemNumber:        itemNum,
