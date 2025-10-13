@@ -52,9 +52,10 @@ func (r *PdfRenderer) processText(node *ast.Text) {
 	if !r.NeedBlockquoteStyleUpdate {
 		s = strings.ReplaceAll(s, "\n", " ")
 	}
+	s = strings.ReplaceAll(s, "- [ ]", "☐")
+	s = strings.ReplaceAll(s, "- [x]", "☑")
 	s = strings.ReplaceAll(s, "[ ]", "☐")
 	s = strings.ReplaceAll(s, "[x]", "☑")
-	s = strings.ReplaceAll(s, "[X]", "☑")
 	r.tracer("Text", s)
 
 	if incell {
@@ -102,6 +103,7 @@ func (r *PdfRenderer) outputUnhighlightedCodeBlock(codeBlock string) {
 }
 
 func (r *PdfRenderer) processCodeblock(node ast.CodeBlock) {
+	r.resetListCounter()
 	r.tracer("Codeblock", fmt.Sprintf("%v", ast.ToString(node.AsLeaf())))
 
 	currentStyle := r.cs.peek().textStyle
@@ -206,6 +208,12 @@ func (r *PdfRenderer) processCodeblock(node ast.CodeBlock) {
 	}
 }
 
+func (r *PdfRenderer) resetListCounter() {
+	if !r.KeepNumbering {
+		r.orderedListCounter = 0
+	}
+}
+
 func (r *PdfRenderer) processList(node ast.List, entering bool) {
 	kind := unordered
 	if node.ListFlags&ast.ListTypeOrdered != 0 {
@@ -246,12 +254,20 @@ func isListItem(node ast.Node) bool {
 
 func (r *PdfRenderer) processItem(node ast.ListItem, entering bool) {
 	if entering {
+		var itemNum int
+		if r.cs.peek().listkind == ordered {
+			r.orderedListCounter++
+			itemNum = r.orderedListCounter
+		} else {
+			itemNum = r.cs.peek().itemNumber + 1
+		}
+
 		r.tracer(fmt.Sprintf("%v Item (entering) #%v",
-			r.cs.peek().listkind, r.cs.peek().itemNumber+1),
+			r.cs.peek().listkind, itemNum),
 			fmt.Sprintf("%v", ast.ToString(node.AsContainer())))
 		r.cr() // newline before getting started
 		x := &containerState{
-			textStyle: r.Normal, itemNumber: r.cs.peek().itemNumber + 1,
+			textStyle: r.Normal, itemNumber: itemNum,
 			listkind:       r.cs.peek().listkind,
 			firstParagraph: true,
 			leftMargin:     r.cs.peek().leftMargin}
@@ -279,7 +295,10 @@ func (r *PdfRenderer) processItem(node ast.ListItem, entering bool) {
 			fmt.Sprintf("%v", ast.ToString(node.AsContainer())))
 		// before we output the new line, reset left margin
 		r.Pdf.SetLeftMargin(r.cs.peek().leftMargin)
-		r.cs.parent().itemNumber++
+		// Only increment parent itemNumber for non-ordered lists (ordered uses global counter)
+		if r.cs.peek().listkind != ordered {
+			r.cs.parent().itemNumber++
+		}
 		r.cs.pop()
 	}
 }
@@ -496,6 +515,7 @@ func (r *PdfRenderer) processParagraph(node *ast.Paragraph, entering bool) {
 			}
 			return
 		}
+		r.resetListCounter()
 		r.cr()
 	} else {
 		r.tracer("Paragraph (leaving)", "")
@@ -520,6 +540,7 @@ func (r *PdfRenderer) processParagraph(node *ast.Paragraph, entering bool) {
 
 func (r *PdfRenderer) processBlockQuote(node ast.Node, entering bool) {
 	if entering {
+		r.resetListCounter()
 		r.tracer("BlockQuote (entering)", "")
 		curleftmargin, _, _, _ := r.Pdf.GetMargins()
 		x := &containerState{
@@ -538,6 +559,7 @@ func (r *PdfRenderer) processBlockQuote(node ast.Node, entering bool) {
 
 func (r *PdfRenderer) processHeading(node ast.Heading, entering bool) {
 	if entering {
+		r.resetListCounter()
 		r.cr()
 		switch node.Level {
 		case 1:
@@ -585,6 +607,7 @@ func (r *PdfRenderer) processHeading(node ast.Heading, entering bool) {
 }
 
 func (r *PdfRenderer) processHorizontalRule(node ast.Node) {
+	r.resetListCounter()
 	r.tracer("HorizontalRule", "")
 	if r.HorizontalRuleNewPage {
 		r.Pdf.AddPage()

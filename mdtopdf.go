@@ -135,6 +135,8 @@ type PdfRenderer struct {
 	documentMatter            ast.DocumentMatters // keep track of front/main/back matter.
 	Extensions                parser.Extensions
 	ColumnWidths              map[ast.Node][]float64
+	KeepNumbering             bool
+	orderedListCounter        int
 
 	tocLinks map[string]*int
 }
@@ -350,6 +352,7 @@ type PdfRendererParams struct {
 	Opts                                                    []RenderOption
 	Theme                                                   Theme
 	CustomThemeFile                                         string
+	KeepNumbering                                           bool
 }
 
 // loadFontSafely loads a font file with proper error handling
@@ -389,6 +392,8 @@ func NewPdfRenderer(params PdfRendererParams) *PdfRenderer {
 	r.fontdir = "."
 
 	r.Theme = params.Theme
+	r.KeepNumbering = params.KeepNumbering
+	r.orderedListCounter = 0
 
 	// Set default font (fallback to Times if not specified)
 	r.DefaultFont = "Times"

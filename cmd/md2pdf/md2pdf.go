@@ -28,6 +28,7 @@ var fontFamily = flag.String("font-family", "", "System font family [Times | Hel
 var presetFont = flag.String("font", "", "Predefined Unicode font [dejavu_sans | dejavu_serif | noto_sans | roboto | eb_garamond | merriweather | source_serif] (default: source_serif)")
 var themeArg = flag.String("theme", "light", "[light | dark | /path/to/custom/theme.json]")
 var noNewPage = flag.Bool("no-new-page", false, "Don't interpret HR (---) as page break")
+var keepNumbering = flag.Bool("keep-numbering", false, "Preserve continuous list numbering across headers (default: reset to 1)")
 var printFooter = flag.Bool("with-footer", false, "Print doc footer (<author>  <title>  <page number>)")
 var generateTOC = flag.Bool("generate-toc", false, "Auto Generate Table of Contents (TOC)")
 var pageSize = flag.String("page-size", "A4", "[A3 | A4 | A5]")
@@ -235,6 +236,7 @@ func main() {
 		CustomThemeFile: themeFile,
 		DefaultFont:     *fontFamily,
 		PresetFont:      *presetFont,
+		KeepNumbering:   *keepNumbering,
 	}
 
 	pf := mdtopdf.NewPdfRenderer(params)

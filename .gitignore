@@ -28,3 +28,6 @@ testdata/*.log
 # System files
 .DS_Store
 Thumbs.db
+
+# Work notes
+docs/work/
