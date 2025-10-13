@@ -26,6 +26,7 @@ import (
 	"image/png"
 	"io"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -366,7 +367,6 @@ func (r *PdfRenderer) processItem(node *ast.ListItem, entering bool) {
 			bulletLabel = "•"
 		}
 
-		padding := 0.75 * r.em
 		labelWidth := r.Pdf.GetStringWidth(bulletLabel)
 		if labelWidth == 0 && checkboxSymbol != "" {
 			// Fallback to ASCII checkbox markers when glyphs are unavailable
@@ -381,16 +381,19 @@ func (r *PdfRenderer) processItem(node *ast.ListItem, entering bool) {
 			bulletLabel = "-"
 			labelWidth = r.Pdf.GetStringWidth(bulletLabel)
 		}
-		bulletBoxWidth := labelWidth + padding
+		lineHeight := r.Normal.Size + r.Normal.Spacing
+		gapWidth := 0.5 * r.em
 		minWidth := 2 * r.em
-		if bulletBoxWidth < minWidth {
-			bulletBoxWidth = minWidth
+		desiredWidth := math.Max(labelWidth+gapWidth, minWidth)
+		r.Pdf.Write(lineHeight, bulletLabel)
+		// ensure consistent indentation even if glyph width is narrower than desired box
+		currentX := r.Pdf.GetX()
+		newContentLeft := r.cs.peek().leftMargin + desiredWidth
+		if currentX < newContentLeft {
+			r.Pdf.SetX(newContentLeft)
+		} else {
+			newContentLeft = currentX
 		}
-		r.Pdf.CellFormat(bulletBoxWidth, r.Normal.Size+r.Normal.Spacing,
-			bulletLabel,
-			"", 0, "RB", false, 0, "")
-
-		newContentLeft := r.cs.peek().leftMargin + bulletBoxWidth
 		r.cs.peek().contentLeftMargin = newContentLeft
 		// with the bullet done, now set the left margin for the text
 		r.Pdf.SetLeftMargin(newContentLeft)
