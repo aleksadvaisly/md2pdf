@@ -225,13 +225,21 @@ func (r *PdfRenderer) processList(node ast.List, entering bool) {
 	if entering {
 		r.tracer(fmt.Sprintf("%v List (entering)", kind),
 			fmt.Sprintf("%v", ast.ToString(node.AsContainer())))
-		r.Pdf.SetLeftMargin(r.cs.peek().leftMargin + r.IndentValue)
+		parent := r.cs.peek()
+		baseMargin := parent.contentLeftMargin
+		if baseMargin == 0 {
+			baseMargin = parent.leftMargin
+		}
+		newLeftMargin := baseMargin + r.IndentValue
+		r.Pdf.SetLeftMargin(newLeftMargin)
 		r.tracer("... List Left Margin",
-			fmt.Sprintf("set to %v", r.cs.peek().leftMargin+r.IndentValue))
+			fmt.Sprintf("set to %v", newLeftMargin))
 		x := &containerState{
-			textStyle: r.Normal, itemNumber: 0,
-			listkind:   kind,
-			leftMargin: r.cs.peek().leftMargin + r.IndentValue}
+			textStyle:         r.Normal,
+			itemNumber:        0,
+			listkind:          kind,
+			leftMargin:        newLeftMargin,
+			contentLeftMargin: newLeftMargin}
 		r.cs.push(x)
 	} else {
 		r.tracer(fmt.Sprintf("%v List (leaving)", kind),
@@ -310,10 +318,12 @@ func (r *PdfRenderer) processItem(node *ast.ListItem, entering bool) {
 			fmt.Sprintf("%v", ast.ToString(node.AsContainer())))
 		r.cr() // newline before getting started
 		x := &containerState{
-			textStyle: r.Normal, itemNumber: itemNum,
-			listkind:       r.cs.peek().listkind,
-			firstParagraph: true,
-			leftMargin:     r.cs.peek().leftMargin}
+			textStyle:         r.Normal,
+			itemNumber:        itemNum,
+			listkind:          r.cs.peek().listkind,
+			firstParagraph:    true,
+			leftMargin:        r.cs.peek().leftMargin,
+			contentLeftMargin: r.cs.peek().leftMargin}
 		// add bullet or itemnumber; then set left margin for the
 		// text/paragraphs in the item
 		r.cs.push(x)
@@ -326,25 +336,50 @@ func (r *PdfRenderer) processItem(node *ast.ListItem, entering bool) {
 			}
 		}
 
-		if r.cs.peek().listkind == unordered {
-			tr := r.Pdf.UnicodeTranslatorFromDescriptor("")
-			displayChar := "•"
+		bulletLabel := ""
+		switch r.cs.peek().listkind {
+		case unordered:
+			bulletLabel = "•"
 			if checkboxSymbol != "" {
-				displayChar = checkboxSymbol
+				bulletLabel = checkboxSymbol
 			}
-			bulletChar := tr(displayChar)
-			r.Pdf.CellFormat(4*r.em, r.Normal.Size+r.Normal.Spacing,
-				bulletChar,
-				"", 0, "RB", false, 0, "")
-		} else if r.cs.peek().listkind == ordered {
-			r.Pdf.CellFormat(4*r.em, r.Normal.Size+r.Normal.Spacing,
-				fmt.Sprintf("%v.", r.cs.peek().itemNumber),
-				"", 0, "RB", false, 0, "")
+		case ordered:
+			bulletLabel = fmt.Sprintf("%v.", r.cs.peek().itemNumber)
 		}
+		if bulletLabel == "" {
+			bulletLabel = "•"
+		}
+
+		padding := 0.75 * r.em
+		labelWidth := r.Pdf.GetStringWidth(bulletLabel)
+		if labelWidth == 0 && checkboxSymbol != "" {
+			// Fallback to ASCII checkbox markers when glyphs are unavailable
+			if strings.EqualFold(checkboxSymbol, "☑") {
+				bulletLabel = "[x]"
+			} else {
+				bulletLabel = "[ ]"
+			}
+			labelWidth = r.Pdf.GetStringWidth(bulletLabel)
+		}
+		if labelWidth == 0 {
+			bulletLabel = "-"
+			labelWidth = r.Pdf.GetStringWidth(bulletLabel)
+		}
+		bulletBoxWidth := labelWidth + padding
+		minWidth := 2 * r.em
+		if bulletBoxWidth < minWidth {
+			bulletBoxWidth = minWidth
+		}
+		r.Pdf.CellFormat(bulletBoxWidth, r.Normal.Size+r.Normal.Spacing,
+			bulletLabel,
+			"", 0, "RB", false, 0, "")
+
+		newContentLeft := r.cs.peek().leftMargin + bulletBoxWidth
+		r.cs.peek().contentLeftMargin = newContentLeft
 		// with the bullet done, now set the left margin for the text
-		r.Pdf.SetLeftMargin(r.cs.peek().leftMargin + (4 * r.em))
+		r.Pdf.SetLeftMargin(newContentLeft)
 		// set the cursor to this point
-		r.Pdf.SetX(r.cs.peek().leftMargin + (4 * r.em))
+		r.Pdf.SetX(newContentLeft)
 	} else {
 		r.tracer(fmt.Sprintf("%v Item (leaving)",
 			r.cs.peek().listkind),
@@ -388,9 +423,11 @@ func (r *PdfRenderer) processLink(node ast.Link, entering bool) {
 			destination = r.InputBaseURL + "/" + strings.Replace(destination, "./", "", 1)
 		}
 		x := &containerState{
-			textStyle: r.Link, listkind: notlist,
-			leftMargin:  r.cs.peek().leftMargin,
-			destination: destination}
+			textStyle:         r.Link,
+			listkind:          notlist,
+			leftMargin:        r.cs.peek().leftMargin,
+			contentLeftMargin: r.cs.peek().leftMargin,
+			destination:       destination}
 		r.cs.push(x)
 		r.tracer("Link (entering)",
 			fmt.Sprintf("Destination[%v] Title[%v]",
@@ -600,8 +637,10 @@ func (r *PdfRenderer) processBlockQuote(node ast.Node, entering bool) {
 		r.tracer("BlockQuote (entering)", "")
 		curleftmargin, _, _, _ := r.Pdf.GetMargins()
 		x := &containerState{
-			textStyle: r.Blockquote, listkind: notlist,
-			leftMargin: curleftmargin + r.IndentValue}
+			textStyle:         r.Blockquote,
+			listkind:          notlist,
+			leftMargin:        curleftmargin + r.IndentValue,
+			contentLeftMargin: curleftmargin + r.IndentValue}
 		r.cs.push(x)
 		r.Pdf.SetLeftMargin(curleftmargin + r.IndentValue)
 	} else {
@@ -621,38 +660,50 @@ func (r *PdfRenderer) processHeading(node ast.Heading, entering bool) {
 		case 1:
 			r.tracer("Heading (1, entering)", fmt.Sprintf("%v", ast.ToString(node.AsContainer())))
 			x := &containerState{
-				textStyle: r.H1, listkind: notlist,
-				leftMargin: r.cs.peek().leftMargin}
+				textStyle:         r.H1,
+				listkind:          notlist,
+				leftMargin:        r.cs.peek().leftMargin,
+				contentLeftMargin: r.cs.peek().leftMargin}
 			r.cs.push(x)
 		case 2:
 			r.tracer("Heading (2, entering)", fmt.Sprintf("%v", ast.ToString(node.AsContainer())))
 			x := &containerState{
-				textStyle: r.H2, listkind: notlist,
-				leftMargin: r.cs.peek().leftMargin}
+				textStyle:         r.H2,
+				listkind:          notlist,
+				leftMargin:        r.cs.peek().leftMargin,
+				contentLeftMargin: r.cs.peek().leftMargin}
 			r.cs.push(x)
 		case 3:
 			r.tracer("Heading (3, entering)", fmt.Sprintf("%v", ast.ToString(node.AsContainer())))
 			x := &containerState{
-				textStyle: r.H3, listkind: notlist,
-				leftMargin: r.cs.peek().leftMargin}
+				textStyle:         r.H3,
+				listkind:          notlist,
+				leftMargin:        r.cs.peek().leftMargin,
+				contentLeftMargin: r.cs.peek().leftMargin}
 			r.cs.push(x)
 		case 4:
 			r.tracer("Heading (4, entering)", fmt.Sprintf("%v", ast.ToString(node.AsContainer())))
 			x := &containerState{
-				textStyle: r.H4, listkind: notlist,
-				leftMargin: r.cs.peek().leftMargin}
+				textStyle:         r.H4,
+				listkind:          notlist,
+				leftMargin:        r.cs.peek().leftMargin,
+				contentLeftMargin: r.cs.peek().leftMargin}
 			r.cs.push(x)
 		case 5:
 			r.tracer("Heading (5, entering)", fmt.Sprintf("%v", ast.ToString(node.AsContainer())))
 			x := &containerState{
-				textStyle: r.H5, listkind: notlist,
-				leftMargin: r.cs.peek().leftMargin}
+				textStyle:         r.H5,
+				listkind:          notlist,
+				leftMargin:        r.cs.peek().leftMargin,
+				contentLeftMargin: r.cs.peek().leftMargin}
 			r.cs.push(x)
 		case 6:
 			r.tracer("Heading (6, entering)", fmt.Sprintf("%v", ast.ToString(node.AsContainer())))
 			x := &containerState{
-				textStyle: r.H6, listkind: notlist,
-				leftMargin: r.cs.peek().leftMargin}
+				textStyle:         r.H6,
+				listkind:          notlist,
+				leftMargin:        r.cs.peek().leftMargin,
+				contentLeftMargin: r.cs.peek().leftMargin}
 			r.cs.push(x)
 		}
 	} else {
@@ -703,8 +754,10 @@ func (r *PdfRenderer) processTable(node ast.Node, entering bool) {
 	if entering {
 		r.tracer("Table (entering)", "")
 		x := &containerState{
-			textStyle: r.THeader, listkind: notlist,
-			leftMargin: r.cs.peek().leftMargin}
+			textStyle:         r.THeader,
+			listkind:          notlist,
+			leftMargin:        r.cs.peek().leftMargin,
+			contentLeftMargin: r.cs.peek().leftMargin}
 		r.cr()
 		r.cs.push(x)
 		fill = false
@@ -727,8 +780,10 @@ func (r *PdfRenderer) processTableHead(node ast.Node, entering bool) {
 	if entering {
 		r.tracer("TableHead (entering)", "")
 		x := &containerState{
-			textStyle: r.THeader, listkind: notlist,
-			leftMargin: r.cs.peek().leftMargin}
+			textStyle:         r.THeader,
+			listkind:          notlist,
+			leftMargin:        r.cs.peek().leftMargin,
+			contentLeftMargin: r.cs.peek().leftMargin}
 		r.cs.push(x)
 	} else {
 		r.cs.pop()
@@ -740,8 +795,10 @@ func (r *PdfRenderer) processTableBody(node ast.Node, entering bool) {
 	if entering {
 		r.tracer("TableBody (entering)", "")
 		x := &containerState{
-			textStyle: r.TBody, listkind: notlist,
-			leftMargin: r.cs.peek().leftMargin}
+			textStyle:         r.TBody,
+			listkind:          notlist,
+			leftMargin:        r.cs.peek().leftMargin,
+			contentLeftMargin: r.cs.peek().leftMargin}
 		r.cs.push(x)
 	} else {
 		r.cs.pop()
@@ -754,8 +811,10 @@ func (r *PdfRenderer) processTableRow(node ast.Node, entering bool) {
 	if entering {
 		r.tracer("TableRow (entering)", "")
 		x := &containerState{
-			textStyle: r.TBody, listkind: notlist,
-			leftMargin: r.cs.peek().leftMargin}
+			textStyle:         r.TBody,
+			listkind:          notlist,
+			leftMargin:        r.cs.peek().leftMargin,
+			contentLeftMargin: r.cs.peek().leftMargin}
 		if r.cs.peek().isHeader {
 			x.textStyle = r.THeader
 		}
@@ -776,8 +835,10 @@ func (r *PdfRenderer) processTableCell(node ast.TableCell, entering bool) {
 
 		r.tracer("TableCell (entering)", "")
 		x := &containerState{
-			textStyle: r.Normal, listkind: notlist,
-			leftMargin: r.cs.peek().leftMargin}
+			textStyle:         r.Normal,
+			listkind:          notlist,
+			leftMargin:        r.cs.peek().leftMargin,
+			contentLeftMargin: r.cs.peek().leftMargin}
 		if node.IsHeader {
 			x.isHeader = true
 			x.textStyle = r.THeader

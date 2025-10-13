@@ -512,8 +512,10 @@ func NewPdfRenderer(params PdfRendererParams) *PdfRenderer {
 
 	r.cs = states{stack: make([]*containerState, 0)}
 	initcurrent := &containerState{
-		listkind:  notlist,
-		textStyle: r.Normal, leftMargin: r.mleft}
+		listkind:          notlist,
+		textStyle:         r.Normal,
+		leftMargin:        r.mleft,
+		contentLeftMargin: r.mleft}
 	r.cs.push(initcurrent)
 
 	for _, o := range params.Opts {
@@ -642,8 +644,10 @@ func setColumnWidths(doc ast.Node, r *PdfRenderer) {
 // UpdateParagraphStyler - update with default styler
 func (r *PdfRenderer) UpdateParagraphStyler(defaultStyler Styler) {
 	initcurrent := &containerState{
-		listkind:  notlist,
-		textStyle: defaultStyler, leftMargin: r.mleft}
+		listkind:          notlist,
+		textStyle:         defaultStyler,
+		leftMargin:        r.mleft,
+		contentLeftMargin: r.mleft}
 	r.cs.push(initcurrent)
 }
 

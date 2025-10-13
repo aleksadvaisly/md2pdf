@@ -51,9 +51,10 @@ func (n listType) String() string {
 }
 
 type containerState struct {
-	textStyle      Styler
-	leftMargin     float64
-	firstParagraph bool
+	textStyle         Styler
+	leftMargin        float64
+	contentLeftMargin float64
+	firstParagraph    bool
 
 	// populated if node type is a list
 	listkind   listType
