@@ -27,7 +27,7 @@ import (
 	"io"
 	"log"
 	"os"
-
+	"path/filepath"
 	"strings"
 
 	"codeberg.org/go-pdf/fpdf"
@@ -343,9 +343,22 @@ func (r *PdfRenderer) SetCustomTheme(themeJSONFile string) {
 // PdfRendererParams struct to hold params passed to NewPdfRenderer
 type PdfRendererParams struct {
 	Orientation, Papersz, PdfFile, TracerFile, FontFile, FontName, DefaultFont string
+	PresetFont                                                                  string
 	Opts                                                                        []RenderOption
 	Theme                                                                       Theme
 	CustomThemeFile                                                             string
+}
+
+// loadFontSafely loads a font file with proper error handling
+func loadFontSafely(pdf *fpdf.Fpdf, family, style, fontFile string) error {
+	if _, err := os.Stat(fontFile); err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("font file not found: %s", fontFile)
+		}
+		return fmt.Errorf("cannot access font file '%s': %w", fontFile, err)
+	}
+	pdf.AddUTF8Font(family, style, fontFile)
+	return nil
 }
 
 // NewPdfRenderer creates and configures an PdfRenderer object,
@@ -385,6 +398,37 @@ func NewPdfRenderer(params PdfRendererParams) *PdfRenderer {
 	r.Pdf.SetHeaderFunc(func() {
 		r.SetPageBackground("", r.BackgroundColor)
 	})
+
+	// Load preset UTF-8 font if specified
+	if params.PresetFont != "" {
+		fontMap := map[string]struct {
+			dir  string
+			name string
+		}{
+			"dejavu_sans": {
+				dir:  "resources/fonts/dejavu_sans",
+				name: "DejaVuSans",
+			},
+		}
+
+		if fontInfo, exists := fontMap[params.PresetFont]; exists {
+			// Load all font variants (regular, bold, italic, bold-italic) with error handling
+			fonts := map[string]string{
+				"":   "DejaVuSans.ttf",
+				"B":  "DejaVuSans-Bold.ttf",
+				"I":  "DejaVuSans-Oblique.ttf",
+				"BI": "DejaVuSans-BoldOblique.ttf",
+			}
+
+			for style, filename := range fonts {
+				fullPath := filepath.Join(fontInfo.dir, filename)
+				if err := loadFontSafely(r.Pdf, fontInfo.name, style, fullPath); err != nil {
+					log.Fatalf("Failed to load %s font: %v\nEnsure font files are installed in %s/", params.PresetFont, err, fontInfo.dir)
+				}
+			}
+			r.DefaultFont = fontInfo.name
+		}
+	}
 
 	switch r.Theme {
 	case DARK:

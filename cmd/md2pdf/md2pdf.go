@@ -74,21 +74,23 @@ func glob(dir string, validExts []string) ([]string, error) {
 }
 
 func loadPresetFont(fontName string) error {
-	// Map preset font names to their file paths in resources/fonts/
-	fontMap := map[string]string{
-		"dejavu_sans":  "resources/fonts/dejavu_sans",
-		"dejavu_serif": "resources/fonts/dejavu_serif",
-		"noto_sans":    "resources/fonts/noto_sans",
-		"roboto":       "resources/fonts/roboto",
+	// Validate preset font name
+	validFonts := map[string]bool{
+		"dejavu_sans":  true,
+		"dejavu_serif": false,
+		"noto_sans":    false,
+		"roboto":       false,
 	}
 
-	fontPath, exists := fontMap[fontName]
+	implemented, exists := validFonts[fontName]
 	if !exists {
 		return fmt.Errorf("unknown preset font: %s (available: dejavu_sans, dejavu_serif, noto_sans, roboto)", fontName)
 	}
 
-	// For now, just log the font name - actual loading will be implemented in phase C
-	log.Printf("Preset font requested: %s (path: %s)", fontName, fontPath)
+	if !implemented {
+		return fmt.Errorf("preset font '%s' is not yet implemented (only dejavu_sans is currently supported)", fontName)
+	}
+
 	return nil
 }
 
@@ -216,8 +218,7 @@ func main() {
 		themeFile = *themeArg
 	}
 
-	// Determine which font to use based on priority
-	selectedFont := *fontFamily
+	// Validate preset font if specified
 	if *presetFont != "" {
 		// Warn if both flags specified
 		if *fontFamily != "Times" {
@@ -228,11 +229,6 @@ func main() {
 		if err != nil {
 			log.Fatalf("Failed to load preset font: %v", err)
 		}
-
-		// TODO(Phase C): Load actual preset font files and configure renderer
-		// For Phase B, preset fonts are validated but not yet loaded
-		log.Printf("Note: Preset font '%s' validated but not yet implemented. Using %s until Phase C.", *presetFont, *fontFamily)
-		selectedFont = *fontFamily  // Will be replaced with actual font loading in Phase C
 	}
 
 	params := mdtopdf.PdfRendererParams{
@@ -245,7 +241,8 @@ func main() {
 		CustomThemeFile: themeFile,
 		FontFile:        *fontFile,
 		FontName:        *fontName,
-		DefaultFont:     selectedFont,
+		DefaultFont:     *fontFamily,
+		PresetFont:      *presetFont,
 	}
 
 	pf := mdtopdf.NewPdfRenderer(params)
