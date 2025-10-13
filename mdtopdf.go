@@ -732,8 +732,13 @@ func (r *PdfRenderer) RenderNode(w io.Writer, node ast.Node, entering bool) ast.
 		r.tracer("Softbreak", "Output newline")
 		r.cr()
 	case *ast.Hardbreak:
-		r.tracer("Hardbreak", "Output newline")
-		r.cr()
+		r.tracer("Hardbreak", "Output newline with extra spacing")
+		// Add extra spacing for hard breaks (like list items in formatted text)
+		style := r.cs.peek().textStyle
+		extraSpacing := 3.0 // Additional points between lines
+		LH := style.Size + style.Spacing + extraSpacing
+		r.tracer("cr()", fmt.Sprintf("LH=%.2f (normal=%.2f + extra=%.2f)", LH, style.Size+style.Spacing, extraSpacing))
+		r.Pdf.Write(LH, "\n")
 	case *ast.Emph:
 		r.processEmph(node, entering)
 	case *ast.Strong:
