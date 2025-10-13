@@ -274,6 +274,8 @@ func (r *PdfRenderer) processItem(node ast.ListItem, entering bool) {
 		// add bullet or itemnumber; then set left margin for the
 		// text/paragraphs in the item
 		r.cs.push(x)
+		// Set cursor X position to leftMargin before rendering bullet/number
+		r.Pdf.SetX(r.cs.peek().leftMargin)
 		if r.cs.peek().listkind == unordered {
 			tr := r.Pdf.UnicodeTranslatorFromDescriptor("")
 			bulletChar := tr("•")
