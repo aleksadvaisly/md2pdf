@@ -334,7 +334,7 @@ func (r *PdfRenderer) processItem(node *ast.ListItem, entering bool) {
 			fmt.Sprintf("%v", ast.ToString(node.AsContainer())))
 		// Create list style BEFORE adding newline
 		listStyle := r.Normal
-		listStyle.Spacing = 1.4 // For multi-line text INSIDE list items (was 1.2, originally 0.96)
+		listStyle.Spacing = 1.2 // For multi-line text INSIDE list items (sweet spot between tight and readable)
 
 		// Use NEGATIVE spacing for newline between items (even tighter!)
 		LH := listStyle.Size - 3.0 // size=11.0 - 3.0 = 8.0pt (pull items together)
