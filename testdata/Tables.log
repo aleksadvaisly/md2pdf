@@ -1,30 +1,30 @@
 [RenderHeader] Not handled
 [Document] Not Handled
-[cr()] LH=14
+[cr()] LH=13
 [Heading (1, entering)] Container
   Text 'Table Tests'
 
 -[Text] Table Tests
 -[Heading (leaving)] 
--[cr()] LH=29
+-[cr()] LH=24
 [Paragraph (entering)] 
 [... Margins (left, top, right, bottom:] 28.35 28.35 28.35 56.7
-[cr()] LH=14
+[cr()] LH=13
 [Text] This is a simple table:
 [Paragraph (leaving)] 
 [... Margins (left, top, right, bottom:] 28.35 28.35 28.35 56.7
-[cr()] LH=14
+[cr()] LH=13
 [Table (entering)] 
-[cr()] LH=14
+[cr()] LH=13
 -[TableHead (entering)] 
 --[TableRow (entering)] 
 ---[TableCell (entering)] 
 ----[Text] Header
----[... table header cell] Width=47.2176, height=14
+---[... table header cell] Width=38.1084, height=13
 ---[TableCell (leaving)] 
 ---[TableCell (entering)] 
 ----[Text] Another header
----[... table header cell] Width=99.25919999999999, height=14
+---[... table header cell] Width=81.7344, height=13
 ---[TableCell (leaving)] 
 --[TableRow (leaving)] 
 -[TableHead (leaving)] 
@@ -47,33 +47,33 @@
 --[TableRow (leaving)] 
 -[TableBody (leaving)] 
 [Table (leaving)] 
-[cr()] LH=14
+[cr()] LH=13
 [Paragraph (entering)] 
 [... Margins (left, top, right, bottom:] 28.35 28.35 28.35 56.7
-[cr()] LH=14
+[cr()] LH=13
 [Text] Here is another table, with more content in the cells:
 [Paragraph (leaving)] 
 [... Margins (left, top, right, bottom:] 28.35 28.35 28.35 56.7
-[cr()] LH=14
+[cr()] LH=13
 [Table (entering)] 
-[cr()] LH=14
+[cr()] LH=13
 -[TableHead (entering)] 
 --[TableRow (entering)] 
 ---[TableCell (entering)] 
 ----[Text] id
----[... table header cell] Width=11.2032, height=14
+---[... table header cell] Width=10.2696, height=13
 ---[TableCell (leaving)] 
 ---[TableCell (entering)] 
 ----[Text] process_name
----[... table header cell] Width=94.4352, height=14
+---[... table header cell] Width=74.77799999999999, height=13
 ---[TableCell (leaving)] 
 ---[TableCell (entering)] 
 ----[Text] window_name
----[... table header cell] Width=269.69759999999997, height=14
+---[... table header cell] Width=226.2216, height=13
 ---[TableCell (leaving)] 
 ---[TableCell (entering)] 
 ----[Text] duration
----[... table header cell] Width=56.0448, height=14
+---[... table header cell] Width=46.9392, height=13
 ---[TableCell (leaving)] 
 --[TableRow (leaving)] 
 -[TableHead (leaving)] 
@@ -155,5 +155,5 @@
 --[TableRow (leaving)] 
 -[TableBody (leaving)] 
 [Table (leaving)] 
-[cr()] LH=14
+[cr()] LH=13
 [Document] Not Handled

@@ -2,7 +2,7 @@
 [Document] Not Handled
 [Paragraph (entering)] 
 [... Margins (left, top, right, bottom:] 28.35 28.35 28.35 56.7
-[cr()] LH=14
+[cr()] LH=13
 [Text] This is the 
 -[Link (entering)] Destination[/simple] Title[]
 -[Text] simple case
@@ -10,10 +10,10 @@
 [Text] .
 [Paragraph (leaving)] 
 [... Margins (left, top, right, bottom:] 28.35 28.35 28.35 56.7
-[cr()] LH=14
+[cr()] LH=13
 [Paragraph (entering)] 
 [... Margins (left, top, right, bottom:] 28.35 28.35 28.35 56.7
-[cr()] LH=14
+[cr()] LH=13
 [Text] This one has a 
 -[Link (entering)] Destination[/foo] Title[]
 -[Text] line break
@@ -21,10 +21,10 @@
 [Text] .
 [Paragraph (leaving)] 
 [... Margins (left, top, right, bottom:] 28.35 28.35 28.35 56.7
-[cr()] LH=14
+[cr()] LH=13
 [Paragraph (entering)] 
 [... Margins (left, top, right, bottom:] 28.35 28.35 28.35 56.7
-[cr()] LH=14
+[cr()] LH=13
 [Text] This one has a 
 -[Link (entering)] Destination[/foo] Title[]
 -[Text] line
@@ -33,10 +33,10 @@
 [Text]  with a line-ending space.
 [Paragraph (leaving)] 
 [... Margins (left, top, right, bottom:] 28.35 28.35 28.35 56.7
-[cr()] LH=14
+[cr()] LH=13
 [Paragraph (entering)] 
 [... Margins (left, top, right, bottom:] 28.35 28.35 28.35 56.7
-[cr()] LH=14
+[cr()] LH=13
 [Text] 
 -[Link (entering)] Destination[/that] Title[]
 -[Text] this
@@ -47,5 +47,5 @@
 -[Link (leaving)] 
 [Paragraph (leaving)] 
 [... Margins (left, top, right, bottom:] 28.35 28.35 28.35 56.7
-[cr()] LH=14
+[cr()] LH=13
 [Document] Not Handled

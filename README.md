@@ -5,11 +5,15 @@
 
 ## Markdown to PDF
 
+<img src="docs/small_create_with_ai.png" style="float: left; margin: 0 15px 15px 0;" width="150">
+
 A CLI utility which, as the name implies, generates a PDF from Markdown.
 
 This package depends on two other packages:
 - [gomarkdown](https://github.com/gomarkdown/markdown) parser to read the markdown source
 - [fpdf](https://codeberg.org/go-pdf/fpdf) to generate the PDF
+
+Pure Go implementation with no external binary dependencies (e.g., Chrome, wkhtmltopdf).
 
 ## Features
 
@@ -69,6 +73,23 @@ TOC items can then be clicked to navigate to the relevant section (similar to HT
 
 To make use of this feature, simply pass `--generate-toc` as an argument.
 
+## Building
+
+Using Makefile:
+```sh
+make build    # Build binary to bin/md2pdf
+make install  # Install to ~/.local/bin
+make test     # Run unit tests
+make e2e      # Run end-to-end tests
+make clean    # Remove build artifacts
+make all      # Full build pipeline (clean + tidy + fmt + build + test)
+```
+
+Using Go directly:
+```sh
+go build -o bin/md2pdf ./cmd/md2pdf
+```
+
 ## Quick start
 
 ```
@@ -95,12 +116,7 @@ existing clone:
 git submodule update --remote  --init
 ```
 
-*Note 1: the `cmd` folder has an example for the syntax highlighting. 
-See the script `run_syntax_highlighting.sh`. This example assumes that
-the folder with the syntax files is located at a relative location:
-`../../../jessp01/gohighlight/syntax_files`.*
-
-*Note 2: when annotating the code block to specify the language, the
+*Note: when annotating the code block to specify the language, the
 annotation name must match the syntax base filename.*
 
 ### Additional options
@@ -108,6 +124,8 @@ annotation name must match the syntax base filename.*
 ```sh
   -author string
     	Author name; used if -footer is passed
+  -default-font string
+    	Default font family for document body [Times | Helvetica | Courier] (default "Times")
   -font-file string
     	path to font file to use
   -font-name string
@@ -123,7 +141,7 @@ annotation name must match the syntax base filename.*
   -new-page-on-hr
     	Interpret HR as a new page; useful for presentations
   -o string
-    	Output PDF filename; required
+    	Output PDF filename (optional; auto-generated from input filename if not provided)
   -orientation string
     	[portrait | landscape] (default "portrait")
   -page-size string

@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/gomarkdown/markdown/parser"
 	"github.com/solworktech/md2pdf/v2"
@@ -26,6 +27,7 @@ var author = flag.String("author", "", "Author's name; used if -footer is passed
 var unicodeSupport = flag.String("unicode-encoding", "", "e.g 'cp1251'")
 var fontFile = flag.String("font-file", "", "path to font file to use")
 var fontName = flag.String("font-name", "", "Font name ID; e.g 'Helvetica-1251'")
+var defaultFont = flag.String("default-font", "Times", "Default font family for document body [Times | Helvetica | Courier]")
 var themeArg = flag.String("theme", "light", "[light | dark | /path/to/custom/theme.json]")
 var hrAsNewPage = flag.Bool("new-page-on-hr", false, "Interpret HR as a new page; useful for presentations")
 var printFooter = flag.Bool("with-footer", false, "Print doc footer (<author>  <title>  <page number>)")
@@ -43,7 +45,10 @@ var _, fileName, fileLine, ok = runtime.Caller(0)
 var opts []mdtopdf.RenderOption
 
 func processRemoteInputFile(url string) ([]byte, error) {
-	resp, err := http.Get(url)
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+	}
+	resp, err := client.Get(url)
 	if err != nil {
 		return nil, err
 	}
@@ -79,10 +84,6 @@ func main() {
 	if *ver {
 		fmt.Printf("md2pdf version: %s, commit: %s, built on: %s\n", version, commit, date)
 		return
-	}
-
-	if *output == "" {
-		usage("Output PDF filename is required")
 	}
 
 	if *hrAsNewPage == true {
@@ -153,6 +154,36 @@ func main() {
 		}
 	}
 
+	// Auto-generate output filename if not provided
+	if *output == "" {
+		if *input == "" {
+			usage("Output PDF filename is required when reading from stdin")
+		} else {
+			httpRegex := regexp.MustCompile("^http(s)?://")
+			if httpRegex.Match([]byte(*input)) {
+				// For URLs, use the base filename from URL
+				baseName := filepath.Base(*input)
+				*output = strings.TrimSuffix(baseName, filepath.Ext(baseName)) + ".pdf"
+			} else {
+				fileInfo, err := os.Stat(*input)
+				if err == nil && fileInfo.IsDir() {
+					// For directories, use directory name
+					*output = filepath.Base(*input) + ".pdf"
+				} else {
+					// For files, replace .md or .markdown extension with .pdf
+					baseName := *input
+					if strings.HasSuffix(baseName, ".md") {
+						*output = strings.TrimSuffix(baseName, ".md") + ".pdf"
+					} else if strings.HasSuffix(baseName, ".markdown") {
+						*output = strings.TrimSuffix(baseName, ".markdown") + ".pdf"
+					} else {
+						*output = baseName + ".pdf"
+					}
+				}
+			}
+		}
+	}
+
 	theme := mdtopdf.LIGHT
 	themeFile := ""
 	if *themeArg == "dark" {
@@ -172,6 +203,7 @@ func main() {
 		CustomThemeFile: themeFile,
 		FontFile:        *fontFile,
 		FontName:        *fontName,
+		DefaultFont:     *defaultFont,
 	}
 
 	pf := mdtopdf.NewPdfRenderer(params)
@@ -218,7 +250,7 @@ func main() {
 	}
 	pf.Pdf.SetSubject(*title, true)
 	pf.Pdf.SetTitle(*title, true)
-	pf.Extensions = parser.NoIntraEmphasis | parser.Tables | parser.FencedCode | parser.Autolink | parser.Strikethrough | parser.SpaceHeadings | parser.HeadingIDs | parser.BackslashLineBreak | parser.DefinitionLists
+	pf.Extensions = parser.NoIntraEmphasis | parser.Tables | parser.FencedCode | parser.Autolink | parser.Strikethrough | parser.SpaceHeadings | parser.HeadingIDs | parser.BackslashLineBreak | parser.DefinitionLists | parser.HardLineBreak
 
 	if *fontFile != "" && *fontName != "" {
 		fmt.Println(*fontFile)

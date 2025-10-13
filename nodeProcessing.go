@@ -22,6 +22,8 @@ package mdtopdf
 import (
 	"errors"
 	"fmt"
+	"image"
+	"image/png"
 	"io"
 	"log"
 	"net/http"
@@ -32,13 +34,15 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"codeberg.org/go-pdf/fpdf"
-	"github.com/canhlinh/svg2png"
 	"github.com/gabriel-vasile/mimetype"
 	"github.com/gomarkdown/markdown/ast"
 	highlight "github.com/jessp01/gohighlight"
 	"github.com/mitchellh/go-wordwrap"
+	"github.com/srwiley/oksvg"
+	"github.com/srwiley/rasterx"
 )
 
 func (r *PdfRenderer) processText(node *ast.Text) {
@@ -48,6 +52,10 @@ func (r *PdfRenderer) processText(node *ast.Text) {
 	if !r.NeedBlockquoteStyleUpdate {
 		s = strings.ReplaceAll(s, "\n", " ")
 	}
+	// Convert checkboxes to simpler characters
+	s = strings.ReplaceAll(s, "[ ] ", "□ ")
+	s = strings.ReplaceAll(s, "[x] ", "■ ")
+	s = strings.ReplaceAll(s, "[X] ", "■ ")
 	r.tracer("Text", s)
 
 	if incell {
@@ -328,6 +336,7 @@ func (r *PdfRenderer) processLink(node ast.Link, entering bool) {
 
 func downloadFile(url, fileName string) error {
 	client := http.Client{
+		Timeout: 30 * time.Second,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			fmt.Println("Redirected to:", req.URL)
 			return nil
@@ -415,9 +424,25 @@ func (r *PdfRenderer) processImage(node ast.Image, entering bool) {
 			destination = tf.Name()
 			width, _ := strconv.ParseFloat(matches[1], 64)
 			height, _ := strconv.ParseFloat(matches[2], 64)
-			chrome := svg2png.NewChrome().SetHeight(int(height)).SetWith(int(width))
+
+			icon, err := oksvg.ReadIconStream(tf)
+			if err != nil {
+				log.Println(err)
+				return
+			}
+			icon.SetTarget(0, 0, float64(width), float64(height))
+			rgba := image.NewRGBA(image.Rect(0, 0, int(width), int(height)))
+			icon.Draw(rasterx.NewDasher(int(width), int(height), rasterx.NewScannerGV(int(width), int(height), rgba, rgba.Bounds())), 1)
+
 			outputFileName := destination + ".png"
-			if err := chrome.Screenshoot(destination, outputFileName); err != nil {
+			outputFile, err := os.Create(outputFileName)
+			if err != nil {
+				log.Println(err)
+				return
+			}
+			defer outputFile.Close()
+
+			if err := png.Encode(outputFile, rgba); err != nil {
 				log.Println(err)
 				return
 			}
@@ -612,6 +637,7 @@ func (r *PdfRenderer) processTable(node ast.Node, entering bool) {
 		r.cs.push(x)
 		fill = false
 		cellwidths = r.ColumnWidths[node]
+		r.Pdf.SetLineWidth(1)
 	} else {
 		wSum := 0.0
 		for _, w := range cellwidths {
@@ -669,7 +695,7 @@ func (r *PdfRenderer) processTableRow(node ast.Node, entering bool) {
 	} else {
 		r.cs.pop()
 		r.tracer("TableRow (leaving)", "")
-		fill = !fill
+		// No alternating fill for cleaner table style
 	}
 }
 
@@ -706,10 +732,10 @@ func (r *PdfRenderer) processTableCell(node ast.TableCell, entering bool) {
 			r.tracer("... table header cell",
 				fmt.Sprintf("Width=%v, height=%v", w, h))
 
-			r.Pdf.CellFormat(w, h, s, "1", 0, "C", true, 0, "")
+			r.Pdf.CellFormat(w, h, s, "B", 0, "L", false, 0, "")
 		} else {
 			h := currentStyle.Size + currentStyle.Spacing
-			r.Pdf.CellFormat(w, h, s, "LR", 0, "", fill, 0, "")
+			r.Pdf.CellFormat(w, h, s, "", 0, "L", false, 0, "")
 		}
 		r.tracer("TableCell (leaving)", "")
 		curdatacell++
