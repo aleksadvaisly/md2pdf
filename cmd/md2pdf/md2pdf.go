@@ -76,13 +76,17 @@ func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	flag.Parse()
 
+	if *input == "" && len(flag.Args()) > 0 {
+		*input = flag.Args()[0]
+	}
+
 	if *help {
 		usage("")
 		return
 	}
 
 	if *ver {
-		fmt.Printf("md2pdf version: %s, commit: %s, built on: %s\n", version, commit, date)
+		fmt.Printf("md2pdf %s\n", version)
 		return
 	}
 

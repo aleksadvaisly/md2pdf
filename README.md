@@ -92,6 +92,19 @@ go build -o bin/md2pdf ./cmd/md2pdf
 
 ## Quick start
 
+Using the binary:
+```sh
+# With explicit -i flag
+md2pdf -i test.md -o test.pdf
+
+# Or use positional argument (must come after flags)
+md2pdf -o test.pdf test.md
+
+# Auto-generate output filename (test.pdf)
+md2pdf test.md
+```
+
+Using go run:
 ```
 $ cd cmd/md2pdf
 $ go run md2pdf.go -i test.md -o test.pdf

@@ -15,7 +15,8 @@ GOGET=$(GOCMD) get
 GOMOD=$(GOCMD) mod
 
 # Build flags
-LDFLAGS=-ldflags "-s -w"
+VERSION=$(shell date +v%y.%m%d.%H%M)
+LDFLAGS=-ldflags "-s -w -X main.version=$(VERSION)"
 BUILD_FLAGS=-v
 
 # Colors for help
