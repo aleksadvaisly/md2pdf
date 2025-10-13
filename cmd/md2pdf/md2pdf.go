@@ -24,8 +24,8 @@ var output = flag.String("o", "", "Output PDF filename; required")
 var pathToSyntaxFiles = flag.String("s", "", "Path to github.com/jessp01/gohighlight/syntax_files")
 var title = flag.String("title", "", "Presentation title")
 var author = flag.String("author", "", "Author's name; used if -footer is passed")
-var fontFamily = flag.String("font-family", "Times", "System font family [Times | Helvetica | Courier] (default: Times)")
-var presetFont = flag.String("font", "eb_garamond", "Predefined Unicode font [dejavu_sans | dejavu_serif | noto_sans | roboto | eb_garamond | merriweather | source_serif]")
+var fontFamily = flag.String("font-family", "", "System font family [Times | Helvetica | Courier]")
+var presetFont = flag.String("font", "", "Predefined Unicode font [dejavu_sans | dejavu_serif | noto_sans | roboto | eb_garamond | merriweather | source_serif] (default: eb_garamond)")
 var themeArg = flag.String("theme", "light", "[light | dark | /path/to/custom/theme.json]")
 var noNewPage = flag.Bool("no-new-page", false, "Don't interpret HR (---) as page break")
 var printFooter = flag.Bool("with-footer", false, "Print doc footer (<author>  <title>  <page number>)")
@@ -208,8 +208,12 @@ func main() {
 		themeFile = *themeArg
 	}
 
+	if *presetFont == "" && *fontFamily == "" {
+		*presetFont = "eb_garamond"
+	}
+
 	if *presetFont != "" {
-		if *fontFamily != "Times" {
+		if *fontFamily != "" {
 			log.Printf("Warning: Both --font and --font-family specified. --font takes priority.")
 		}
 
