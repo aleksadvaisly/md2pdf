@@ -74,21 +74,15 @@ func glob(dir string, validExts []string) ([]string, error) {
 }
 
 func loadPresetFont(fontName string) error {
-	// Validate preset font name
 	validFonts := map[string]bool{
 		"dejavu_sans":  true,
-		"dejavu_serif": false,
-		"noto_sans":    false,
-		"roboto":       false,
+		"dejavu_serif": true,
+		"noto_sans":    true,
+		"roboto":       true,
 	}
 
-	implemented, exists := validFonts[fontName]
-	if !exists {
+	if _, exists := validFonts[fontName]; !exists {
 		return fmt.Errorf("unknown preset font: %s (available: dejavu_sans, dejavu_serif, noto_sans, roboto)", fontName)
-	}
-
-	if !implemented {
-		return fmt.Errorf("preset font '%s' is not yet implemented (only dejavu_sans is currently supported)", fontName)
 	}
 
 	return nil

@@ -402,22 +402,53 @@ func NewPdfRenderer(params PdfRendererParams) *PdfRenderer {
 	// Load preset UTF-8 font if specified
 	if params.PresetFont != "" {
 		fontMap := map[string]struct {
-			dir  string
-			name string
+			dir      string
+			name     string
+			regular  string
+			bold     string
+			italic   string
+			boldItal string
 		}{
 			"dejavu_sans": {
-				dir:  "resources/fonts/dejavu_sans",
-				name: "DejaVuSans",
+				dir:      "resources/fonts/dejavu_sans",
+				name:     "DejaVuSans",
+				regular:  "DejaVuSans.ttf",
+				bold:     "DejaVuSans-Bold.ttf",
+				italic:   "DejaVuSans-Oblique.ttf",
+				boldItal: "DejaVuSans-BoldOblique.ttf",
+			},
+			"dejavu_serif": {
+				dir:      "resources/fonts/dejavu_serif",
+				name:     "DejaVuSerif",
+				regular:  "DejaVuSerif.ttf",
+				bold:     "DejaVuSerif-Bold.ttf",
+				italic:   "DejaVuSerif-Italic.ttf",
+				boldItal: "DejaVuSerif-BoldItalic.ttf",
+			},
+			"noto_sans": {
+				dir:      "resources/fonts/noto_sans",
+				name:     "NotoSans",
+				regular:  "NotoSans-Regular.ttf",
+				bold:     "NotoSans-Bold.ttf",
+				italic:   "NotoSans-Italic.ttf",
+				boldItal: "NotoSans-BoldItalic.ttf",
+			},
+			"roboto": {
+				dir:      "resources/fonts/roboto",
+				name:     "Roboto",
+				regular:  "Roboto-Regular.ttf",
+				bold:     "Roboto-Bold.ttf",
+				italic:   "Roboto-Italic.ttf",
+				boldItal: "Roboto-BoldItalic.ttf",
 			},
 		}
 
 		if fontInfo, exists := fontMap[params.PresetFont]; exists {
-			// Load all font variants (regular, bold, italic, bold-italic) with error handling
 			fonts := map[string]string{
-				"":   "DejaVuSans.ttf",
-				"B":  "DejaVuSans-Bold.ttf",
-				"I":  "DejaVuSans-Oblique.ttf",
-				"BI": "DejaVuSans-BoldOblique.ttf",
+				"":   fontInfo.regular,
+				"B":  fontInfo.bold,
+				"I":  fontInfo.italic,
+				"BI": fontInfo.boldItal,
 			}
 
 			for style, filename := range fonts {
