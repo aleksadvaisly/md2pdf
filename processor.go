@@ -227,12 +227,6 @@ func (r *PdfRenderer) processList(node ast.List, entering bool) {
 		r.tracer(fmt.Sprintf("%v List (entering)", kind),
 			fmt.Sprintf("%v", ast.ToString(node.AsContainer())))
 		parent := r.cs.peek()
-
-		// Add spacing before nested list (list inside list item)
-		if parent.listkind != notlist && len(r.cs.stack) >= 2 {
-			r.cr()
-		}
-
 		baseMargin := parent.contentLeftMargin
 		if baseMargin == 0 {
 			baseMargin = parent.leftMargin
@@ -342,9 +336,9 @@ func (r *PdfRenderer) processItem(node *ast.ListItem, entering bool) {
 		listStyle := r.Normal
 		listStyle.Spacing = 1.2 // For multi-line text INSIDE list items (sweet spot between tight and readable)
 
-		// Use negative spacing for newline between items (compact but not overlapping)
-		LH := listStyle.Size - 1.0 // size=11.0 - 1.0 = 10.0pt (tight but no collision)
-		r.tracer("cr() with listStyle", fmt.Sprintf("LH=%.2f (size=%.1f - 1.0)", LH, listStyle.Size))
+		// Use NEGATIVE spacing for newline between items (compact but not overlapping)
+		LH := listStyle.Size - 2.0 // size=11.0 - 2.0 = 9.0pt (tight but readable)
+		r.tracer("cr() with listStyle", fmt.Sprintf("LH=%.2f (size=%.1f - 2.0)", LH, listStyle.Size))
 		r.Pdf.Write(LH, "\n")
 		x := &containerState{
 			textStyle:         listStyle,

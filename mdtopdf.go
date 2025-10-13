@@ -732,6 +732,18 @@ func (r *PdfRenderer) RenderNode(w io.Writer, node ast.Node, entering bool) ast.
 		r.tracer("Softbreak", "Output newline")
 		r.cr()
 	case *ast.Hardbreak:
+		// Check if next sibling is a nested list - if so, skip the hardbreak
+		// to avoid extra spacing before nested lists
+		if node.Parent != nil {
+			nextSibling := ast.GetNextNode(node)
+			if nextSibling != nil {
+				if _, isNextList := nextSibling.(*ast.List); isNextList {
+					r.tracer("Hardbreak", "Skipping (next sibling is nested List)")
+					return ast.GoToNext
+				}
+			}
+		}
+
 		// Add extra spacing for hard breaks, but NOT in lists (lists should be compact)
 		style := r.cs.peek().textStyle
 		extraSpacing := 0.0
