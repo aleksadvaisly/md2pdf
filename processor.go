@@ -336,9 +336,9 @@ func (r *PdfRenderer) processItem(node *ast.ListItem, entering bool) {
 		listStyle := r.Normal
 		listStyle.Spacing = 1.2 // For multi-line text INSIDE list items (sweet spot between tight and readable)
 
-		// Use NEGATIVE spacing for newline between items (even tighter!)
-		LH := listStyle.Size - 3.0 // size=11.0 - 3.0 = 8.0pt (pull items together)
-		r.tracer("cr() with listStyle", fmt.Sprintf("LH=%.2f (size=%.1f - 3.0 overlap)", LH, listStyle.Size))
+		// Use NEGATIVE spacing for newline between items (compact but not overlapping)
+		LH := listStyle.Size - 2.0 // size=11.0 - 2.0 = 9.0pt (tight but readable)
+		r.tracer("cr() with listStyle", fmt.Sprintf("LH=%.2f (size=%.1f - 2.0)", LH, listStyle.Size))
 		r.Pdf.Write(LH, "\n")
 		x := &containerState{
 			textStyle:         listStyle,
