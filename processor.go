@@ -334,7 +334,7 @@ func (r *PdfRenderer) processItem(node *ast.ListItem, entering bool) {
 			fmt.Sprintf("%v", ast.ToString(node.AsContainer())))
 		r.cr() // newline before getting started
 		listStyle := r.Normal
-		listStyle.Spacing = r.Normal.Spacing * 0.6
+		listStyle.Spacing = 0.0 // Minimum spacing for very tight lists (was 0.6 × Normal.Spacing)
 		x := &containerState{
 			textStyle:         listStyle,
 			itemNumber:        itemNum,
