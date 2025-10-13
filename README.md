@@ -137,8 +137,10 @@ annotation name must match the syntax base filename.*
 ```sh
   -author string
     	Author name; used if -footer is passed
-  -default-font string
-    	Default font family for document body [Times | Helvetica | Courier] (default "Times")
+  -font string
+    	Predefined Unicode font [dejavu_sans | dejavu_serif | noto_sans | roboto]
+  -font-family string
+    	System font family [Times | Helvetica | Courier] (default: Times)
   -font-file string
     	path to font file to use
   -font-name string

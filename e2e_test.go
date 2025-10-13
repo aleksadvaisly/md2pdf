@@ -68,7 +68,7 @@ func TestE2EConversions(t *testing.T) {
 			name:       "Helvetica font",
 			inputFile:  "tests/md2pdf_test.md",
 			outputFile: "tests/e2e_helvetica.pdf",
-			extraArgs:  []string{"--default-font", "Helvetica"},
+			extraArgs:  []string{"--font-family", "Helvetica"},
 			timeout:    10 * time.Second,
 		},
 		{

@@ -52,10 +52,6 @@ func (r *PdfRenderer) processText(node *ast.Text) {
 	if !r.NeedBlockquoteStyleUpdate {
 		s = strings.ReplaceAll(s, "\n", " ")
 	}
-	// Convert checkboxes to simpler characters
-	s = strings.ReplaceAll(s, "[ ] ", "□ ")
-	s = strings.ReplaceAll(s, "[x] ", "■ ")
-	s = strings.ReplaceAll(s, "[X] ", "■ ")
 	r.tracer("Text", s)
 
 	if incell {

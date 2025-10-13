@@ -27,9 +27,10 @@ var author = flag.String("author", "", "Author's name; used if -footer is passed
 var unicodeSupport = flag.String("unicode-encoding", "", "e.g 'cp1251'")
 var fontFile = flag.String("font-file", "", "path to font file to use")
 var fontName = flag.String("font-name", "", "Font name ID; e.g 'Helvetica-1251'")
-var defaultFont = flag.String("default-font", "Times", "Default font family for document body [Times | Helvetica | Courier]")
+var fontFamily = flag.String("font-family", "Times", "System font family [Times | Helvetica | Courier] (default: Times)")
+var presetFont = flag.String("font", "", "Predefined Unicode font [dejavu_sans | dejavu_serif | noto_sans | roboto]")
 var themeArg = flag.String("theme", "light", "[light | dark | /path/to/custom/theme.json]")
-var hrAsNewPage = flag.Bool("new-page-on-hr", false, "Interpret HR as a new page; useful for presentations")
+var noNewPage = flag.Bool("no-new-page", false, "Don't interpret HR (---) as page break")
 var printFooter = flag.Bool("with-footer", false, "Print doc footer (<author>  <title>  <page number>)")
 var generateTOC = flag.Bool("generate-toc", false, "Auto Generate Table of Contents (TOC)")
 var pageSize = flag.String("page-size", "A4", "[A3 | A4 | A5]")
@@ -72,6 +73,25 @@ func glob(dir string, validExts []string) ([]string, error) {
 	return files, err
 }
 
+func loadPresetFont(fontName string) error {
+	// Map preset font names to their file paths in resources/fonts/
+	fontMap := map[string]string{
+		"dejavu_sans":  "resources/fonts/dejavu_sans",
+		"dejavu_serif": "resources/fonts/dejavu_serif",
+		"noto_sans":    "resources/fonts/noto_sans",
+		"roboto":       "resources/fonts/roboto",
+	}
+
+	fontPath, exists := fontMap[fontName]
+	if !exists {
+		return fmt.Errorf("unknown preset font: %s (available: dejavu_sans, dejavu_serif, noto_sans, roboto)", fontName)
+	}
+
+	// For now, just log the font name - actual loading will be implemented in phase C
+	log.Printf("Preset font requested: %s (path: %s)", fontName, fontPath)
+	return nil
+}
+
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	flag.Parse()
@@ -90,8 +110,8 @@ func main() {
 		return
 	}
 
-	if *hrAsNewPage == true {
-		opts = append(opts, mdtopdf.IsHorizontalRuleNewPage(true))
+	if *noNewPage == true {
+		opts = append(opts, mdtopdf.IsHorizontalRuleNewPage(false))
 	}
 
 	if *unicodeSupport != "" {
@@ -133,7 +153,6 @@ func main() {
 			}
 
 			if fileInfo.IsDir() {
-				opts = append(opts, mdtopdf.IsHorizontalRuleNewPage(true))
 				validExts := []string{".md", ".markdown"}
 				files, err := glob(*input, validExts)
 				if err != nil {
@@ -197,6 +216,25 @@ func main() {
 		themeFile = *themeArg
 	}
 
+	// Determine which font to use based on priority
+	selectedFont := *fontFamily
+	if *presetFont != "" {
+		// Warn if both flags specified
+		if *fontFamily != "Times" {
+			log.Printf("Warning: Both --font and --font-family specified. --font takes priority.")
+		}
+
+		err := loadPresetFont(*presetFont)
+		if err != nil {
+			log.Fatalf("Failed to load preset font: %v", err)
+		}
+
+		// TODO(Phase C): Load actual preset font files and configure renderer
+		// For Phase B, preset fonts are validated but not yet loaded
+		log.Printf("Note: Preset font '%s' validated but not yet implemented. Using %s until Phase C.", *presetFont, *fontFamily)
+		selectedFont = *fontFamily  // Will be replaced with actual font loading in Phase C
+	}
+
 	params := mdtopdf.PdfRendererParams{
 		Orientation:     *orientation,
 		Papersz:         *pageSize,
@@ -207,7 +245,7 @@ func main() {
 		CustomThemeFile: themeFile,
 		FontFile:        *fontFile,
 		FontName:        *fontName,
-		DefaultFont:     *defaultFont,
+		DefaultFont:     selectedFont,
 	}
 
 	pf := mdtopdf.NewPdfRenderer(params)
