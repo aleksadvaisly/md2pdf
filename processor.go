@@ -52,10 +52,9 @@ func (r *PdfRenderer) processText(node *ast.Text) {
 	if !r.NeedBlockquoteStyleUpdate {
 		s = strings.ReplaceAll(s, "\n", " ")
 	}
-	s = strings.ReplaceAll(s, "- [ ]", "☐")
-	s = strings.ReplaceAll(s, "- [x]", "☑")
 	s = strings.ReplaceAll(s, "[ ]", "☐")
 	s = strings.ReplaceAll(s, "[x]", "☑")
+	s = strings.ReplaceAll(s, "[X]", "☑")
 	r.tracer("Text", s)
 
 	if incell {
@@ -252,7 +251,51 @@ func isListItem(node ast.Node) bool {
 	return ok
 }
 
-func (r *PdfRenderer) processItem(node ast.ListItem, entering bool) {
+func stripCheckboxMarker(item *ast.ListItem) (string, bool) {
+	var symbol string
+	found := false
+
+	ast.WalkFunc(item, func(n ast.Node, entering bool) ast.WalkStatus {
+		if !entering || found {
+			return ast.GoToNext
+		}
+
+		textNode, ok := n.(*ast.Text)
+		if !ok {
+			return ast.GoToNext
+		}
+
+		literal := string(textNode.Literal)
+		trimmed := strings.TrimLeft(literal, " \t")
+		leading := len(literal) - len(trimmed)
+
+		if len(trimmed) < 3 {
+			return ast.GoToNext
+		}
+
+		marker := trimmed[:3]
+		switch marker {
+		case "[ ]":
+			symbol = "☐"
+		case "[x]", "[X]":
+			symbol = "☑"
+		default:
+			return ast.GoToNext
+		}
+
+		remainder := strings.TrimLeft(trimmed[3:], " \t")
+		if leading > 0 {
+			remainder = literal[:leading] + remainder
+		}
+		textNode.Literal = []byte(remainder)
+		found = true
+		return ast.Terminate
+	})
+
+	return symbol, found
+}
+
+func (r *PdfRenderer) processItem(node *ast.ListItem, entering bool) {
 	if entering {
 		var itemNum int
 		if r.cs.peek().listkind == ordered {
@@ -276,9 +319,20 @@ func (r *PdfRenderer) processItem(node ast.ListItem, entering bool) {
 		r.cs.push(x)
 		// Set cursor X position to leftMargin before rendering bullet/number
 		r.Pdf.SetX(r.cs.peek().leftMargin)
+		var checkboxSymbol string
+		if r.cs.peek().listkind == unordered {
+			if sym, ok := stripCheckboxMarker(node); ok {
+				checkboxSymbol = sym
+			}
+		}
+
 		if r.cs.peek().listkind == unordered {
 			tr := r.Pdf.UnicodeTranslatorFromDescriptor("")
-			bulletChar := tr("•")
+			displayChar := "•"
+			if checkboxSymbol != "" {
+				displayChar = checkboxSymbol
+			}
+			bulletChar := tr(displayChar)
 			r.Pdf.CellFormat(4*r.em, r.Normal.Size+r.Normal.Spacing,
 				bulletChar,
 				"", 0, "RB", false, 0, "")

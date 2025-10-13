@@ -348,11 +348,11 @@ func (r *PdfRenderer) SetCustomTheme(themeJSONFile string) {
 // PdfRendererParams struct to hold params passed to NewPdfRenderer
 type PdfRendererParams struct {
 	Orientation, Papersz, PdfFile, TracerFile, DefaultFont string
-	PresetFont                                              string
-	Opts                                                    []RenderOption
-	Theme                                                   Theme
-	CustomThemeFile                                         string
-	KeepNumbering                                           bool
+	PresetFont                                             string
+	Opts                                                   []RenderOption
+	Theme                                                  Theme
+	CustomThemeFile                                        string
+	KeepNumbering                                          bool
 }
 
 // loadFontSafely loads a font file with proper error handling
@@ -557,6 +557,8 @@ func (r *PdfRenderer) Process(content []byte) error {
 		defer r.w.Flush()
 	}
 
+	content = ensureCheckboxListSpacing(content)
+
 	err = r.Run(content)
 	if err != nil {
 		return fmt.Errorf("error on %v:%v", r.pdfFile, err)
@@ -735,7 +737,7 @@ func (r *PdfRenderer) RenderNode(w io.Writer, node ast.Node, entering bool) ast.
 	case *ast.List:
 		r.processList(*node, entering)
 	case *ast.ListItem:
-		r.processItem(*node, entering)
+		r.processItem(node, entering)
 	case *ast.CodeBlock:
 		r.processCodeblock(*node)
 	case *ast.Table:
@@ -798,6 +800,52 @@ func IsHorizontalRuleNewPage(value bool) RenderOption {
 	return func(r *PdfRenderer) {
 		r.HorizontalRuleNewPage = value
 	}
+}
+
+func ensureCheckboxListSpacing(content []byte) []byte {
+	lines := strings.Split(string(content), "\n")
+	if len(lines) == 0 {
+		return content
+	}
+
+	result := make([]string, 0, len(lines)+8)
+	for _, line := range lines {
+		if isCheckboxListLine(line) && len(result) > 0 {
+			prev := result[len(result)-1]
+			if strings.TrimSpace(prev) != "" && !isListMarkerLine(prev) {
+				result = append(result, "")
+			}
+		}
+		result = append(result, line)
+	}
+
+	return []byte(strings.Join(result, "\n"))
+}
+
+func isCheckboxListLine(line string) bool {
+	trimmed := strings.TrimLeft(line, " \t")
+	return strings.HasPrefix(trimmed, "- [")
+}
+
+func isListMarkerLine(line string) bool {
+	trimmed := strings.TrimSpace(line)
+	if trimmed == "" {
+		return false
+	}
+
+	if strings.HasPrefix(trimmed, "- ") || strings.HasPrefix(trimmed, "* ") || strings.HasPrefix(trimmed, "+ ") {
+		return true
+	}
+
+	for i := 0; i < len(trimmed); i++ {
+		if trimmed[i] < '0' || trimmed[i] > '9' {
+			if (trimmed[i] == '.' || trimmed[i] == ')') && i+1 < len(trimmed) && trimmed[i+1] == ' ' {
+				return i > 0
+			}
+			return false
+		}
+	}
+	return false
 }
 
 // SetSyntaxHighlightBaseDir path to https://github.com/jessp01/gohighlight/tree/master/syntax_files
