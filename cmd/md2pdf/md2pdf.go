@@ -94,8 +94,12 @@ func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	flag.Parse()
 
+	// Support positional arguments: md2pdf input.md [output.pdf]
 	if *input == "" && len(flag.Args()) > 0 {
 		*input = flag.Args()[0]
+	}
+	if *output == "" && len(flag.Args()) > 1 {
+		*output = flag.Args()[1]
 	}
 
 	if *help {

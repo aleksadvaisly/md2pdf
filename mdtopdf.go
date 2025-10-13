@@ -582,10 +582,59 @@ func (r *PdfRenderer) Run(content []byte) error {
 	p := parser.NewWithExtensions(r.Extensions)
 	doc := markdown.Parse(s, p)
 
+	addListTransitionSpacing(doc, r) // Must be before setColumnWidths to have tracer available
 	setColumnWidths(doc, r)
 	_ = markdown.Render(doc, r)
 
 	return nil
+}
+
+// addListTransitionSpacing detects transitions between different list types (ordered/unordered)
+// and adds extra spacing by injecting additional cr() call in processList
+func addListTransitionSpacing(doc ast.Node, r *PdfRenderer) {
+	// Recursively walk the tree and process containers
+	var walk func(node ast.Node)
+	walk = func(node ast.Node) {
+		container := node.AsContainer()
+		if container == nil {
+			return
+		}
+
+		children := container.GetChildren()
+		var prevList *ast.List
+
+		for _, child := range children {
+			// Check if current child is a list
+			if currentList, ok := child.(*ast.List); ok {
+				// If previous sibling was also a list, check for type transition
+				if prevList != nil {
+					prevIsOrdered := prevList.ListFlags&ast.ListTypeOrdered != 0
+					currentIsOrdered := currentList.ListFlags&ast.ListTypeOrdered != 0
+
+					if prevIsOrdered != currentIsOrdered {
+						// Mark this list for extra spacing
+						// We'll use a marker in the list itself
+						if currentList.Attribute == nil {
+							currentList.Attribute = &ast.Attribute{}
+						}
+						if currentList.Attribute.Attrs == nil {
+							currentList.Attribute.Attrs = make(map[string][]byte)
+						}
+						currentList.Attribute.Attrs["data-list-transition"] = []byte("true")
+					}
+				}
+				prevList = currentList
+			} else {
+				// Reset prevList when encountering non-list node
+				prevList = nil
+			}
+
+			// Recursively process this child
+			walk(child)
+		}
+	}
+
+	walk(doc)
 }
 
 // Parses all tables and sets the column width to the longest string in that column
@@ -813,6 +862,7 @@ func (r *PdfRenderer) RenderNode(w io.Writer, node ast.Node, entering bool) ast.
 	default:
 		fmt.Printf("Unknown node type: %T. Skipping\n", node)
 	}
+
 	return ast.GoToNext
 }
 

@@ -227,6 +227,21 @@ func (r *PdfRenderer) processList(node ast.List, entering bool) {
 		r.tracer(fmt.Sprintf("%v List (entering)", kind),
 			fmt.Sprintf("%v", ast.ToString(node.AsContainer())))
 		parent := r.cs.peek()
+
+		// Check if this list has transition marker (different type from previous sibling)
+		if node.Attribute != nil && node.Attribute.Attrs != nil {
+			if _, hasTransition := node.Attribute.Attrs["data-list-transition"]; hasTransition {
+				r.tracer("List transition spacing", "Adding cr() for list type transition")
+				r.cr()
+			}
+		}
+
+		// Add spacing before nested lists (when inside another list item)
+		if parent.listkind != notlist && len(r.cs.stack) >= 2 {
+			r.tracer("Nested list spacing", "Adding cr() before nested list")
+			r.cr()
+		}
+
 		baseMargin := parent.contentLeftMargin
 		if baseMargin == 0 {
 			baseMargin = parent.leftMargin
