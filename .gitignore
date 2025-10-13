@@ -17,9 +17,13 @@ vendor/
 tests/
 bugs/
 
-# Generated output files (not test reference files)
+# Generated output files
 output.pdf
 /*.pdf
+
+# Generated test artifacts
+testdata/*.pdf
+testdata/*.log
 
 # System files
 .DS_Store
