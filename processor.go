@@ -227,6 +227,24 @@ func (r *PdfRenderer) processList(node ast.List, entering bool) {
 		r.tracer(fmt.Sprintf("%v List (entering)", kind),
 			fmt.Sprintf("%v", ast.ToString(node.AsContainer())))
 		parent := r.cs.peek()
+
+		// Check if this list has transition marker (different type from previous sibling)
+		if node.Attribute != nil && node.Attribute.Attrs != nil {
+			if _, hasTransition := node.Attribute.Attrs["data-list-transition"]; hasTransition {
+				r.tracer("List transition spacing", "Adding cr() for list type transition")
+				r.cr()
+			}
+		}
+
+		// Add reduced spacing before nested lists (when inside another list item)
+		// Use 40% of normal spacing (ensureCheckboxListSpacing now skips indented lines)
+		if parent.listkind != notlist && len(r.cs.stack) >= 2 {
+			style := r.cs.peek().textStyle
+			reducedLH := (style.Size + style.Spacing) * 0.4
+			r.tracer("Nested list spacing", fmt.Sprintf("Adding reduced spacing (LH=%.2f) before nested list", reducedLH))
+			r.Pdf.Write(reducedLH, "\n")
+		}
+
 		baseMargin := parent.contentLeftMargin
 		if baseMargin == 0 {
 			baseMargin = parent.leftMargin
@@ -332,9 +350,14 @@ func (r *PdfRenderer) processItem(node *ast.ListItem, entering bool) {
 		r.tracer(fmt.Sprintf("%v Item (entering) #%v",
 			parent.listkind, itemNum),
 			fmt.Sprintf("%v", ast.ToString(node.AsContainer())))
-		r.cr() // newline before getting started
+		// Create list style BEFORE adding newline
 		listStyle := r.Normal
-		listStyle.Spacing = r.Normal.Spacing * 0.6
+		listStyle.Spacing = 1.2 // For multi-line text INSIDE list items (sweet spot between tight and readable)
+
+		// Use NEGATIVE spacing for newline between items (compact but not overlapping)
+		LH := listStyle.Size - 2.0 // size=11.0 - 2.0 = 9.0pt (tight but readable)
+		r.tracer("cr() with listStyle", fmt.Sprintf("LH=%.2f (size=%.1f - 2.0)", LH, listStyle.Size))
+		r.Pdf.Write(LH, "\n")
 		x := &containerState{
 			textStyle:         listStyle,
 			itemNumber:        itemNum,

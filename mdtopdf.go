@@ -233,7 +233,7 @@ func (r *PdfRenderer) SetLightTheme() {
 	r.BackgroundColor = Colorlookup("white")
 	r.SetPageBackground("", r.BackgroundColor)
 	// Normal Text
-	r.Normal = Styler{Font: r.DefaultFont, Style: "", Size: 11, Spacing: 1.4,
+	r.Normal = Styler{Font: r.DefaultFont, Style: "", Size: 11, Spacing: 1.6,
 		TextColor: Colorlookup("black"), FillColor: Colorlookup("white")}
 
 	// Link text
@@ -284,7 +284,7 @@ func (r *PdfRenderer) SetDarkTheme() {
 	r.BackgroundColor = Colorlookup("black")
 	r.SetPageBackground("", r.BackgroundColor)
 	// Normal Text
-	r.Normal = Styler{Font: r.DefaultFont, Style: "", Size: 11, Spacing: 1.4,
+	r.Normal = Styler{Font: r.DefaultFont, Style: "", Size: 11, Spacing: 1.6,
 		FillColor: Colorlookup("black"), TextColor: Colorlookup("white")}
 
 	// Quoted Text
@@ -582,10 +582,67 @@ func (r *PdfRenderer) Run(content []byte) error {
 	p := parser.NewWithExtensions(r.Extensions)
 	doc := markdown.Parse(s, p)
 
+	addListTransitionSpacing(doc, r) // Must be before setColumnWidths to have tracer available
 	setColumnWidths(doc, r)
 	_ = markdown.Render(doc, r)
 
 	return nil
+}
+
+// addListTransitionSpacing detects transitions between different list types (ordered/unordered)
+// and adds extra spacing by injecting additional cr() call in processList
+func addListTransitionSpacing(doc ast.Node, r *PdfRenderer) {
+	// Recursively walk the tree and process containers
+	var walk func(node ast.Node)
+	walk = func(node ast.Node) {
+		container := node.AsContainer()
+		if container == nil {
+			return
+		}
+
+		children := container.GetChildren()
+		var prevList *ast.List
+
+		if r.tracerFile != "" && len(children) > 0 {
+			fmt.Fprintf(r.w, "[addListTransitionSpacing] Processing %T with %d children\n", node, len(children))
+		}
+
+		for _, child := range children {
+			// Check if current child is a list
+			if currentList, ok := child.(*ast.List); ok {
+				// If previous sibling was also a list, check for type transition
+				if prevList != nil {
+					prevIsOrdered := prevList.ListFlags&ast.ListTypeOrdered != 0
+					currentIsOrdered := currentList.ListFlags&ast.ListTypeOrdered != 0
+
+					if prevIsOrdered != currentIsOrdered {
+						// Mark this list for extra spacing
+						// We'll use a marker in the list itself
+						if currentList.Attribute == nil {
+							currentList.Attribute = &ast.Attribute{}
+						}
+						if currentList.Attribute.Attrs == nil {
+							currentList.Attribute.Attrs = make(map[string][]byte)
+						}
+						currentList.Attribute.Attrs["data-list-transition"] = []byte("true")
+						if r.tracerFile != "" {
+							fmt.Fprintf(r.w, "[addListTransitionSpacing] Marked transition: %v→%v\n", prevIsOrdered, currentIsOrdered)
+						}
+					}
+				}
+				prevList = currentList
+			} else if _, isParagraph := child.(*ast.Paragraph); !isParagraph {
+				// Reset prevList only when encountering non-list, non-paragraph node
+				// Keep prevList when child is Paragraph (common in ListItem)
+				prevList = nil
+			}
+
+			// Recursively process this child
+			walk(child)
+		}
+	}
+
+	walk(doc)
 }
 
 // Parses all tables and sets the column width to the longest string in that column
@@ -669,6 +726,7 @@ func (r *PdfRenderer) setStyler(s Styler) {
 	if s.Style == "bb" {
 		s.Style = "b"
 	}
+	r.tracerStyle("setStyler", s)
 	r.Pdf.SetFont(s.Font, s.Style, s.Size)
 	r.Pdf.SetTextColor(s.TextColor.Red, s.TextColor.Green, s.TextColor.Blue)
 	r.Pdf.SetFillColor(s.FillColor.Red, s.FillColor.Green, s.FillColor.Blue)
@@ -676,6 +734,11 @@ func (r *PdfRenderer) setStyler(s Styler) {
 
 func (r *PdfRenderer) write(s Styler, t string) {
 	// fmt.Printf("%s, %#v\n",t, s)
+	if r.tracerFile != "" && t != "\n" {
+		lineHeight := s.Size + s.Spacing
+		r.tracer("write", fmt.Sprintf("text=\"%s\" | lineHeight=%.2f (size=%.1f + spacing=%.1f)",
+			strings.ReplaceAll(t, "\n", "\\n"), lineHeight, s.Size, s.Spacing))
+	}
 	r.Pdf.Write(s.Size+s.Spacing, t)
 }
 
@@ -699,6 +762,26 @@ func (r *PdfRenderer) writeLink(s Styler, display, url string) {
 // traversal to the next node.
 // (above taken verbatim from the blackfriday v2 package)
 func (r *PdfRenderer) RenderNode(w io.Writer, node ast.Node, entering bool) ast.WalkStatus {
+	// Log node entry/exit for debugging
+	if r.tracerFile != "" {
+		action := "ENTER"
+		if !entering {
+			action = "EXIT"
+		}
+		nodeType := fmt.Sprintf("%T", node)
+		// Extract content for certain node types
+		content := ""
+		switch n := node.(type) {
+		case *ast.Text:
+			content = string(n.Literal)
+		case *ast.Code:
+			content = string(n.Literal)
+		case *ast.Heading:
+			content = fmt.Sprintf("level=%d", n.Level)
+		}
+		r.tracerContext(nodeType, action, content)
+	}
+
 	switch node := node.(type) {
 	case *ast.Text:
 		r.processText(node)
@@ -706,8 +789,36 @@ func (r *PdfRenderer) RenderNode(w io.Writer, node ast.Node, entering bool) ast.
 		r.tracer("Softbreak", "Output newline")
 		r.cr()
 	case *ast.Hardbreak:
-		r.tracer("Hardbreak", "Output newline")
-		r.cr()
+		// Check if next sibling is a nested list - if so, skip the hardbreak
+		// to avoid extra spacing before nested lists
+		if node.Parent != nil {
+			nextSibling := ast.GetNextNode(node)
+			if nextSibling != nil {
+				if _, isNextList := nextSibling.(*ast.List); isNextList {
+					r.tracer("Hardbreak", "Skipping (next sibling is nested List)")
+					return ast.GoToNext
+				}
+			}
+		}
+
+		// Add extra spacing for hard breaks, but NOT in lists (lists should be compact)
+		style := r.cs.peek().textStyle
+		extraSpacing := 0.0
+		inList := r.cs.peek().listkind != notlist
+
+		if !inList {
+			extraSpacing = 3.0 // Additional points between lines in regular paragraphs
+		}
+
+		LH := style.Size + style.Spacing + extraSpacing
+		if extraSpacing > 0 {
+			r.tracer("Hardbreak", fmt.Sprintf("Output newline with extra spacing (not in list)"))
+			r.tracer("cr()", fmt.Sprintf("LH=%.2f (normal=%.2f + extra=%.2f)", LH, style.Size+style.Spacing, extraSpacing))
+		} else {
+			r.tracer("Hardbreak", fmt.Sprintf("Output newline (in list, no extra spacing)"))
+			r.tracer("cr()", fmt.Sprintf("LH=%.2f", LH))
+		}
+		r.Pdf.Write(LH, "\n")
 	case *ast.Emph:
 		r.processEmph(node, entering)
 	case *ast.Strong:
@@ -759,6 +870,7 @@ func (r *PdfRenderer) RenderNode(w io.Writer, node ast.Node, entering bool) ast.
 	default:
 		fmt.Printf("Unknown node type: %T. Skipping\n", node)
 	}
+
 	return ast.GoToNext
 }
 
@@ -782,6 +894,43 @@ func (r *PdfRenderer) tracer(source, msg string) {
 	if r.tracerFile != "" {
 		indent := strings.Repeat("-", len(r.cs.stack)-1)
 		r.w.WriteString(fmt.Sprintf("%v[%v] %v\n", indent, source, msg))
+	}
+}
+
+// tracerContext logs detailed context information for debugging
+func (r *PdfRenderer) tracerContext(nodeType, action, content string) {
+	if r.tracerFile != "" && r.w != nil && len(r.cs.stack) > 0 {
+		indent := strings.Repeat("  ", len(r.cs.stack)-1)
+		_, y := r.Pdf.GetXY()
+
+		// Truncate content if too long
+		if len(content) > 50 {
+			content = content[:50] + "..."
+		}
+		content = strings.ReplaceAll(content, "\n", "\\n")
+
+		// Get current style
+		style := r.cs.peek().textStyle
+		styleInfo := fmt.Sprintf("font=%s style=%s size=%.1f spacing=%.1f",
+			style.Font, style.Style, style.Size, style.Spacing)
+
+		// Format: [ACTION] NodeType | content="..." | style info | y=position
+		r.w.WriteString(fmt.Sprintf("%s[%s] %s | content=\"%s\" | %s | y=%.2f\n",
+			indent, action, nodeType, content, styleInfo, y))
+	}
+}
+
+// tracerStyle logs style application details
+func (r *PdfRenderer) tracerStyle(source string, s Styler) {
+	if r.tracerFile != "" && r.w != nil {
+		depth := 0
+		if len(r.cs.stack) > 0 {
+			depth = len(r.cs.stack) - 1
+		}
+		indent := strings.Repeat("  ", depth)
+		_, y := r.Pdf.GetXY()
+		r.w.WriteString(fmt.Sprintf("%s[STYLE] %s | font=%s style=%s size=%.1f spacing=%.1f | y=%.2f\n",
+			indent, source, s.Font, s.Style, s.Size, s.Spacing, y))
 	}
 }
 
@@ -816,7 +965,10 @@ func ensureCheckboxListSpacing(content []byte) []byte {
 	for _, line := range lines {
 		if isListLikeLine(line) && len(result) > 0 {
 			prev := result[len(result)-1]
-			if strings.TrimSpace(prev) != "" && !isListMarkerLine(prev) {
+			// Don't add blank line if current line is indented (nested list)
+			// Nested lists will get spacing from processList instead
+			isIndented := len(line) > 0 && (line[0] == ' ' || line[0] == '\t')
+			if strings.TrimSpace(prev) != "" && !isListMarkerLine(prev) && !isIndented {
 				result = append(result, "")
 			}
 		}
