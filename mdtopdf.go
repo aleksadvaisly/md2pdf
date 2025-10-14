@@ -957,7 +957,10 @@ func ensureCheckboxListSpacing(content []byte) []byte {
 	for _, line := range lines {
 		if isListLikeLine(line) && len(result) > 0 {
 			prev := result[len(result)-1]
-			if strings.TrimSpace(prev) != "" && !isListMarkerLine(prev) {
+			// Don't add blank line if current line is indented (nested list)
+			// Nested lists will get spacing from processList instead
+			isIndented := len(line) > 0 && (line[0] == ' ' || line[0] == '\t')
+			if strings.TrimSpace(prev) != "" && !isListMarkerLine(prev) && !isIndented {
 				result = append(result, "")
 			}
 		}

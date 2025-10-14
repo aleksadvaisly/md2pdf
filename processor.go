@@ -236,10 +236,13 @@ func (r *PdfRenderer) processList(node ast.List, entering bool) {
 			}
 		}
 
-		// Add spacing before nested lists (when inside another list item)
+		// Add reduced spacing before nested lists (when inside another list item)
+		// Use 60% of normal spacing (ensureCheckboxListSpacing now skips indented lines)
 		if parent.listkind != notlist && len(r.cs.stack) >= 2 {
-			r.tracer("Nested list spacing", "Adding cr() before nested list")
-			r.cr()
+			style := r.cs.peek().textStyle
+			reducedLH := (style.Size + style.Spacing) * 0.6
+			r.tracer("Nested list spacing", fmt.Sprintf("Adding reduced spacing (LH=%.2f) before nested list", reducedLH))
+			r.Pdf.Write(reducedLH, "\n")
 		}
 
 		baseMargin := parent.contentLeftMargin
