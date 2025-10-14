@@ -10,21 +10,12 @@ This package uses:
 
 ## Features
 
-- Syntax highlighting for code blocks
-- Unicode support with multiple fonts
-- Tables, lists, links, and images
-- Page control with horizontal rules
-
-## Supported Markdown Elements
-
+- Headings, lists (ordered, unordered, nested), tables
 - Emphasised and strong text
-- Headings 1-6
-- Ordered and unordered lists
-- Nested lists
-- Images
-- Tables
-- Links
-- Code blocks and inline code
+- Links and images
+- Code blocks with syntax highlighting
+- Unicode support with multiple fonts
+- Page control with horizontal rules
 
 ## Installation
 
@@ -37,27 +28,6 @@ make install
 ```
 
 This installs the binary to `~/.local/bin`. Make sure this directory is in your `PATH`.
-
-## Usage
-
-```sh
-# Basic usage
-md2pdf input.md
-
-# Specify output file
-md2pdf input.md output.pdf
-
-# With flags
-md2pdf -i input.md -o output.pdf
-
-# Don't treat --- as page break
-md2pdf --no-new-page input.md output.pdf
-```
-
-Convert multiple files:
-```sh
-md2pdf -i /path/to/markdown/directory -o combined.pdf
-```
 
 ## Building
 
@@ -129,10 +99,23 @@ md2pdf --font dejavu_sans input.md
         Enable debug logging
 ```
 
-## Example
+## Examples
 
 ```sh
+# Basic usage
+md2pdf input.md
+
+# Specify output file
+md2pdf input.md output.pdf
+
+# With flags
 md2pdf -i input.md -o output.pdf --font dejavu_sans
+
+# Don't treat --- as page break
+md2pdf --no-new-page input.md output.pdf
+
+# Convert multiple files
+md2pdf -i /path/to/markdown/directory -o combined.pdf
 ```
 
 ## License
