@@ -28,11 +28,15 @@ This package uses:
 
 ## Installation
 
-Download pre-built binaries from [releases](https://github.com/solworktech/md2pdf/releases), or install with Go:
+Clone and install:
 
 ```sh
-go install github.com/solworktech/md2pdf/v2/cmd/md2pdf@latest
+git clone https://github.com/aleksadvaisly/md2pdf.git
+cd md2pdf
+make install
 ```
+
+This installs the binary to `~/.local/bin`. Make sure this directory is in your `PATH`.
 
 ## Usage
 
@@ -45,6 +49,9 @@ md2pdf input.md output.pdf
 
 # With flags
 md2pdf -i input.md -o output.pdf
+
+# Don't treat --- as page break
+md2pdf --no-new-page input.md output.pdf
 ```
 
 Convert multiple files:
@@ -78,14 +85,6 @@ Code blocks are automatically highlighted. To specify a language, annotate the c
     ```
 
 The annotation name must match the syntax file basename. See [testdata/syntax_highlighting.md](./testdata/syntax_highlighting.md) for examples.
-
-## Table of Contents
-
-Generate a clickable table of contents:
-
-```sh
-md2pdf --generate-toc input.md
-```
 
 ## Fonts
 
@@ -133,30 +132,8 @@ md2pdf --font dejavu_sans input.md
 ## Example
 
 ```sh
-md2pdf -i report.md \
-       -o report.pdf \
-       --title "Project Report" \
-       --author "Your Name" \
-       --font dejavu_serif \
-       --with-footer
+md2pdf -i input.md -o output.pdf --font dejavu_sans
 ```
-
-## Tests
-
-Tests are in the `testdata` folder. Run with:
-
-```sh
-make test
-```
-
-Visual inspection of generated PDFs is recommended to verify output quality.
-
-## Limitations
-
-- HTML in Markdown is treated as code blocks and not rendered
-- Strikethrough is not supported
-- Definition lists are not supported
-- Link titles (hover text) are not rendered
 
 ## License
 
