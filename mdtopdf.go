@@ -603,6 +603,10 @@ func addListTransitionSpacing(doc ast.Node, r *PdfRenderer) {
 		children := container.GetChildren()
 		var prevList *ast.List
 
+		if r.tracerFile != "" && len(children) > 0 {
+			fmt.Fprintf(r.w, "[addListTransitionSpacing] Processing %T with %d children\n", node, len(children))
+		}
+
 		for _, child := range children {
 			// Check if current child is a list
 			if currentList, ok := child.(*ast.List); ok {
@@ -621,11 +625,15 @@ func addListTransitionSpacing(doc ast.Node, r *PdfRenderer) {
 							currentList.Attribute.Attrs = make(map[string][]byte)
 						}
 						currentList.Attribute.Attrs["data-list-transition"] = []byte("true")
+						if r.tracerFile != "" {
+							fmt.Fprintf(r.w, "[addListTransitionSpacing] Marked transition: %v→%v\n", prevIsOrdered, currentIsOrdered)
+						}
 					}
 				}
 				prevList = currentList
-			} else {
-				// Reset prevList when encountering non-list node
+			} else if _, isParagraph := child.(*ast.Paragraph); !isParagraph {
+				// Reset prevList only when encountering non-list, non-paragraph node
+				// Keep prevList when child is Paragraph (common in ListItem)
 				prevList = nil
 			}
 
