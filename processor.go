@@ -46,6 +46,19 @@ import (
 	"github.com/srwiley/rasterx"
 )
 
+// sanitizeText removes Unicode characters outside the Basic Multilingual Plane (BMP)
+// that fpdf cannot handle (code points > 65535). These include most emojis and some
+// special symbols. Replaces them with spaces to preserve text flow.
+func sanitizeText(s string) string {
+	runes := []rune(s)
+	for i, r := range runes {
+		if r > 65535 {
+			runes[i] = ' '
+		}
+	}
+	return string(runes)
+}
+
 func (r *PdfRenderer) processText(node *ast.Text) {
 	currentStyle := r.cs.peek().textStyle
 	r.setStyler(currentStyle)
@@ -63,6 +76,11 @@ func (r *PdfRenderer) processText(node *ast.Text) {
 		r.cs.peek().cellInnerStringStyle = &currentStyle
 		return
 	}
+
+	// Sanitize text: fpdf's character width array only supports Unicode BMP (0-65535)
+	// Characters outside this range (like emojis U+1F680) cause index out of bounds panic
+	s = sanitizeText(s)
+
 	switch node.Parent.(type) {
 
 	case *ast.Link:
