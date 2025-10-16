@@ -13,55 +13,65 @@ import (
 )
 
 // Emoji codepoints to generate
+// Auto-discovered from PAGE_TWEAKS.md + manually curated common emoji
 var emojiCodepoints = []string{
-	// Status
-	"2705", // ✅
-	"274c", // ❌
-	"26a0", // ⚠
-	"2139", // ℹ
-	"1f6d1", // 🛑
-	"2714", // ✔
+	// Symbols (U+2xxx)
+	"2139", // ℹ INFO
+	"2197", // ↗ UP-RIGHT
+	"2198", // ↘ DOWN-RIGHT
+	"23f1", // ⏱ STOPWATCH
+	"23f3", // ⏳ HOURGLASS
+	// "25cb", // ○ WHITE CIRCLE (not in Twemoji)
+	"2614", // ☔ UMBRELLA
+	"26a0", // ⚠ WARNING
+	"2705", // ✅ CHECK MARK
+	"2714", // ✔ HEAVY CHECK
+	"274c", // ❌ CROSS
+	"27a1", // ➡ RIGHT ARROW
+	"2b05", // ⬅ LEFT ARROW
+	"2b06", // ⬆ UP ARROW
+	"2b07", // ⬇ DOWN ARROW
+	"2b50", // ⭐ STAR
 
-	// Actions
-	"1f680", // 🚀
-	"23f1", // ⏱
-	"1f4ca", // 📊
-	"1f4c8", // 📈
-	"1f4c9", // 📉
-	"1f50d", // 🔍
-	"1f527", // 🔧
-	"1f6e0", // 🛠
-	"1f504", // 🔄
-
-	// Objects
-	"1f4b0", // 💰
-	"1f4a1", // 💡
-	"1f3af", // 🎯
-	"1f381", // 🎁
-	"1f3c6", // 🏆
-	"1f4e7", // 📧
-	"1f4de", // 📞
-	"1f4c5", // 📅
-	"1f4dd", // 📝
-	"1f4cc", // 📌
-	"1f517", // 🔗
-
-	// Arrows/Direction
-	"27a1", // ➡
-	"2b05", // ⬅
-	"2b06", // ⬆
-	"2b07", // ⬇
-	"2197", // ↗
-	"2198", // ↘
-
-	// Emotions
-	"1f389", // 🎉
-	"1f44d", // 👍
-	"1f44e", // 👎
-	"1f600", // 😀
-	"1f622", // 😢
-	"1f4aa", // 💪
-	"1f44c", // 👌
+	// Emoji (U+1Fxxx)
+	"1f381", // 🎁 WRAPPED PRESENT
+	"1f389", // 🎉 PARTY POPPER
+	"1f393", // 🎓 GRADUATION CAP
+	"1f3af", // 🎯 DIRECT HIT
+	"1f3c6", // 🏆 TROPHY
+	"1f44c", // 👌 OK HAND
+	"1f44d", // 👍 THUMBS UP
+	"1f44e", // 👎 THUMBS DOWN
+	"1f465", // 👥 BUSTS IN SILHOUETTE
+	"1f4a1", // 💡 LIGHT BULB
+	"1f4aa", // 💪 FLEXED BICEPS
+	"1f4ac", // 💬 SPEECH BALLOON
+	"1f4b0", // 💰 MONEY BAG
+	"1f4bc", // 💼 BRIEFCASE
+	"1f4c5", // 📅 CALENDAR
+	"1f4c8", // 📈 CHART INCREASING
+	"1f4c9", // 📉 CHART DECREASING
+	"1f4ca", // 📊 BAR CHART
+	"1f4cc", // 📌 PUSHPIN
+	"1f4dd", // 📝 MEMO
+	"1f4de", // 📞 TELEPHONE
+	"1f4e7", // 📧 E-MAIL
+	"1f4f8", // 📸 CAMERA WITH FLASH
+	"1f504", // 🔄 COUNTERCLOCKWISE
+	"1f50d", // 🔍 MAGNIFYING GLASS
+	"1f517", // 🔗 LINK
+	"1f51c", // 🔜 SOON ARROW
+	"1f527", // 🔧 WRENCH
+	"1f52e", // 🔮 CRYSTAL BALL
+	"1f600", // 😀 GRINNING FACE
+	"1f622", // 😢 CRYING FACE
+	"1f680", // 🚀 ROCKET
+	"1f6a7", // 🚧 CONSTRUCTION
+	"1f6a8", // 🚨 POLICE LIGHT
+	"1f6d1", // 🛑 STOP SIGN
+	"1f6e0", // 🛠 HAMMER AND WRENCH
+	"1f916", // 🤖 ROBOT
+	"1f91d", // 🤝 HANDSHAKE
 
 	// Keycaps (multi-codepoint: digit + U+20E3)
 	"30-20e3", // 0️⃣
