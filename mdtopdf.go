@@ -759,6 +759,48 @@ func (r *PdfRenderer) write(s Styler, t string) {
 	r.Pdf.Write(s.Size+s.Spacing, t)
 }
 
+func (r *PdfRenderer) writeSegmented(s Styler, t string) {
+	if r.IconHandling != IconModeEmbed {
+		r.write(s, t)
+		return
+	}
+
+	segments := segmentTextWithEmoji(t)
+	lineHeight := s.Size + s.Spacing
+
+	for _, seg := range segments {
+		if seg.IsEmoji {
+			pngPath := getEmojiPNGPath(seg.Runes)
+			if pngPath == "" {
+				r.write(s, " ")
+				continue
+			}
+
+			imgData, err := emojiFS.ReadFile(pngPath)
+			if err != nil {
+				r.tracer("emoji", fmt.Sprintf("failed to load %s: %v", pngPath, err))
+				r.write(s, " ")
+				continue
+			}
+
+			x := r.Pdf.GetX()
+			y := r.Pdf.GetY()
+
+			emojiSize := s.Size * 0.9
+			offsetY := (s.Size - emojiSize) / 2
+
+			r.Pdf.RegisterImageOptionsReader(pngPath, fpdf.ImageOptions{ImageType: "png"}, strings.NewReader(string(imgData)))
+			r.Pdf.ImageOptions(pngPath, x, y+offsetY, emojiSize, emojiSize, false, fpdf.ImageOptions{ImageType: "png"}, 0, "")
+
+			r.Pdf.SetXY(x+emojiSize, y)
+
+			r.tracer("emoji", fmt.Sprintf("rendered %s at (%.2f, %.2f) size=%.2f", seg.Content, x, y, emojiSize))
+		} else {
+			r.Pdf.Write(lineHeight, seg.Content)
+		}
+	}
+}
+
 func (r *PdfRenderer) multiCell(s Styler, t string) {
 	r.Pdf.MultiCell(0, s.Size+s.Spacing, t, "", "", true)
 }

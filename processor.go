@@ -115,9 +115,7 @@ func (r *PdfRenderer) handleIcons(s string) string {
 		if badge, found := iconBadges[ch]; found {
 			switch r.IconHandling {
 			case IconModeEmbed:
-				// Keep Unicode as-is, let font/fpdf try to render it
-				// If fails (>BMP) → will become space in sanitizeText()
-				// TODO: Implement proper SVG embedding (download Twemoji, rasterize, inline)
+				// Keep Unicode as-is for emoji embedding
 				result = append(result, ch)
 			case IconModeText:
 				// Replace with badge text
@@ -137,8 +135,7 @@ func (r *PdfRenderer) handleIcons(s string) string {
 			// Unknown high Unicode (emoji/special char)
 			switch r.IconHandling {
 			case IconModeEmbed:
-				// Keep Unicode, will fail gracefully (become space) in sanitizeText()
-				// TODO: Proper SVG embedding implementation needed
+				// Keep Unicode for emoji embedding
 				result = append(result, ch)
 			case IconModeText:
 				// Unknown icon, replace with generic badge
@@ -167,7 +164,12 @@ func (r *PdfRenderer) handleIcons(s string) string {
 // that fpdf cannot handle (code points > 65535). These include most emojis and some
 // special symbols. Replaces them with spaces to preserve text flow.
 // This function is called AFTER handleIcons, so it only deals with unknown/unhandled high Unicode.
-func sanitizeText(s string) string {
+// When IconModeEmbed is active, emoji are rendered as images, so we don't sanitize them here.
+func (r *PdfRenderer) sanitizeText(s string) string {
+	if r.IconHandling == IconModeEmbed {
+		return s
+	}
+
 	runes := []rune(s)
 	for i, r := range runes {
 		if r > 65535 {
@@ -200,9 +202,7 @@ func (r *PdfRenderer) processText(node *ast.Text) {
 
 	// Sanitize text: fpdf's character width array only supports Unicode BMP (0-65535)
 	// Characters outside this range (like emojis U+1F680) cause index out of bounds panic
-	// Note: IconModeEmbed keeps high Unicode for now (will become spaces in sanitizeText)
-	// TODO: Implement proper SVG embedding for IconModeEmbed to avoid sanitization
-	s = sanitizeText(s)
+	s = r.sanitizeText(s)
 
 	switch node.Parent.(type) {
 
@@ -219,14 +219,14 @@ func (r *PdfRenderer) processText(node *ast.Text) {
 				r.tracer("Text Heading", fmt.Sprintf("Header '%s' not found in links map\n", s))
 			}
 		}
-		r.write(currentStyle, s)
+		r.writeSegmented(currentStyle, s)
 	case *ast.BlockQuote:
 		if r.NeedBlockquoteStyleUpdate {
 			r.tracer("Text BlockQuote", s)
 			r.multiCell(currentStyle, s)
 		}
 	default:
-		r.write(currentStyle, s)
+		r.writeSegmented(currentStyle, s)
 	}
 }
 
