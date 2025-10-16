@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/xml"
 	"fmt"
 	"image"
 	"image/color"
@@ -10,8 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/srwiley/oksvg"
-	"github.com/srwiley/rasterx"
+	"golang.org/x/image/draw"
 )
 
 // Emoji codepoints from processor.go iconBadges map
@@ -66,49 +64,29 @@ var emojiCodepoints = []string{
 	"1f44c", // 👌
 }
 
-// SVGElement represents an XML element in SVG
-type SVGElement struct {
-	XMLName xml.Name
-	Attrs   []xml.Attr `xml:",any,attr"`
-	Content []byte     `xml:",innerxml"`
-}
-
-// stripColors removes color attributes from SVG XML and replaces with grayscale
-func stripColors(svgContent []byte) ([]byte, error) {
-	// Replace fill and stroke colors with grayscale values
-	content := string(svgContent)
-
-	// Remove all fill and stroke attributes
-	// This is a simple approach - just remove color-related attributes
-	content = strings.ReplaceAll(content, `fill="#`, `fill="#666666" data-original-fill="#`)
-	content = strings.ReplaceAll(content, `stroke="#`, `stroke="#666666" data-original-stroke="#`)
-
-	// Also handle fill/stroke without quotes
-	content = strings.ReplaceAll(content, `fill=`, `fill="#666666" data-original-fill=`)
-	content = strings.ReplaceAll(content, `stroke=`, `stroke="#666666" data-original-stroke=`)
-
-	return []byte(content), nil
-}
-
-// convertToGrayscale converts an RGBA image to grayscale
-func convertToGrayscale(img *image.RGBA) *image.Gray {
+// convertToGrayscaleAlpha converts a color image to grayscale while preserving alpha channel
+func convertToGrayscaleAlpha(img image.Image) *image.NRGBA {
 	bounds := img.Bounds()
-	gray := image.NewGray(bounds)
+	gray := image.NewNRGBA(bounds)
 
 	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
 		for x := bounds.Min.X; x < bounds.Max.X; x++ {
 			r, g, b, a := img.At(x, y).RGBA()
 
-			// If pixel is transparent, keep it transparent in grayscale
-			if a == 0 {
-				gray.Set(x, y, color.Gray{Y: 0})
-				continue
-			}
-
 			// Convert to grayscale using luminosity method
 			// Y = 0.299*R + 0.587*G + 0.114*B
 			grayValue := (299*r + 587*g + 114*b) / 1000
-			gray.Set(x, y, color.Gray{Y: uint8(grayValue >> 8)})
+			grayByte := uint8(grayValue >> 8)
+
+			// Preserve alpha channel
+			alphaByte := uint8(a >> 8)
+
+			gray.Set(x, y, color.NRGBA{
+				R: grayByte,
+				G: grayByte,
+				B: grayByte,
+				A: alphaByte,
+			})
 		}
 	}
 
@@ -117,7 +95,7 @@ func convertToGrayscale(img *image.RGBA) *image.Gray {
 
 func main() {
 	// Check if twemoji directory exists
-	twemojiPath := "../twemoji/assets/svg"
+	twemojiPath := "../twemoji/assets/72x72"
 	if _, err := os.Stat(twemojiPath); os.IsNotExist(err) {
 		fmt.Fprintf(os.Stderr, "ERROR: %s not found\n", twemojiPath)
 		fmt.Fprintf(os.Stderr, "Clone twemoji repository:\n")
@@ -136,65 +114,49 @@ func main() {
 	successCount := 0
 	failCount := 0
 
-	fmt.Println("Generating grayscale emoji PNGs from Twemoji SVGs...")
+	fmt.Println("Generating grayscale emoji PNGs from Twemoji 72x72 rasters...")
 	fmt.Println("=" + strings.Repeat("=", 60))
 
 	for _, codepoint := range emojiCodepoints {
-		svgPath := filepath.Join(twemojiPath, codepoint+".svg")
-		pngPath := filepath.Join(outputDir, codepoint+".png")
+		sourcePNG := filepath.Join(twemojiPath, codepoint+".png")
+		outputPNG := filepath.Join(outputDir, codepoint+".png")
 
 		fmt.Printf("Processing %s... ", codepoint)
 
-		// Read SVG file
-		svgContent, err := os.ReadFile(svgPath)
+		// Read source PNG file
+		srcFile, err := os.Open(sourcePNG)
 		if err != nil {
 			fmt.Printf("FAILED (read error: %v)\n", err)
 			failCount++
 			continue
 		}
 
-		// Strip colors from SVG
-		graySVG, err := stripColors(svgContent)
+		// Decode PNG
+		srcImg, err := png.Decode(srcFile)
+		srcFile.Close()
 		if err != nil {
-			fmt.Printf("FAILED (color strip error: %v)\n", err)
+			fmt.Printf("FAILED (decode error: %v)\n", err)
 			failCount++
 			continue
 		}
 
-		// Parse SVG with oksvg
-		icon, err := oksvg.ReadIconStream(strings.NewReader(string(graySVG)), oksvg.StrictErrorMode)
-		if err != nil {
-			fmt.Printf("FAILED (SVG parse error: %v)\n", err)
-			failCount++
-			continue
-		}
+		// Convert to grayscale (preserving alpha)
+		grayImg := convertToGrayscaleAlpha(srcImg)
 
-		// Rasterize to 128x128 PNG
-		size := 128
-		icon.SetTarget(0, 0, float64(size), float64(size))
-		rgba := image.NewRGBA(image.Rect(0, 0, size, size))
-
-		// Fill with transparent background
-		for y := 0; y < size; y++ {
-			for x := 0; x < size; x++ {
-				rgba.Set(x, y, color.RGBA{R: 255, G: 255, B: 255, A: 0})
-			}
-		}
-
-		icon.Draw(rasterx.NewDasher(size, size, rasterx.NewScannerGV(size, size, rgba, rgba.Bounds())), 1.0)
-
-		// Convert to grayscale
-		grayImg := convertToGrayscale(rgba)
+		// Scale to 128x128 using bilinear interpolation
+		targetSize := 128
+		scaledImg := image.NewNRGBA(image.Rect(0, 0, targetSize, targetSize))
+		draw.BiLinear.Scale(scaledImg, scaledImg.Bounds(), grayImg, grayImg.Bounds(), draw.Over, nil)
 
 		// Save as PNG
-		outFile, err := os.Create(pngPath)
+		outFile, err := os.Create(outputPNG)
 		if err != nil {
 			fmt.Printf("FAILED (create error: %v)\n", err)
 			failCount++
 			continue
 		}
 
-		if err := png.Encode(outFile, grayImg); err != nil {
+		if err := png.Encode(outFile, scaledImg); err != nil {
 			outFile.Close()
 			fmt.Printf("FAILED (encode error: %v)\n", err)
 			failCount++
