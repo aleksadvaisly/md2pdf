@@ -74,6 +74,18 @@ const (
 	CUSTOM Theme = 3
 )
 
+// IconMode determines how emoji/icons are handled during conversion
+type IconMode int
+
+const (
+	// IconModeReplace replaces icons with semantic text badges like [correct], [warning]
+	IconModeReplace IconMode = iota
+	// IconModeStrip removes icons entirely
+	IconModeStrip
+	// IconModeKeep keeps icons as-is (will be sanitized to spaces by fpdf)
+	IconModeKeep
+)
+
 // PdfRenderer is the struct to manage conversion of a markdown object
 // to PDF format.
 type PdfRenderer struct {
@@ -132,6 +144,7 @@ type PdfRenderer struct {
 	InputBaseURL              string
 	Theme                     Theme
 	BackgroundColor           Color
+	IconHandling              IconMode // How to handle emoji/icons
 	documentMatter            ast.DocumentMatters // keep track of front/main/back matter.
 	Extensions                parser.Extensions
 	ColumnWidths              map[ast.Node][]float64
@@ -353,6 +366,7 @@ type PdfRendererParams struct {
 	Theme                                                  Theme
 	CustomThemeFile                                        string
 	KeepNumbering                                          bool
+	IconHandling                                           IconMode
 }
 
 // loadFontSafely loads a font file with proper error handling
@@ -394,6 +408,7 @@ func NewPdfRenderer(params PdfRendererParams) *PdfRenderer {
 	r.Theme = params.Theme
 	r.KeepNumbering = params.KeepNumbering
 	r.orderedListCounter = 0
+	r.IconHandling = params.IconHandling
 
 	// Set default font (fallback to Times if not specified)
 	r.DefaultFont = "Times"

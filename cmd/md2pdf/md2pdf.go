@@ -35,6 +35,8 @@ var pageSize = flag.String("page-size", "A4", "[A3 | A4 | A5]")
 var orientation = flag.String("orientation", "portrait", "[portrait | landscape]")
 var logFile = flag.String("log-file", "", "Path to log file")
 var debug = flag.Bool("debug", false, "Enable debug logging (creates .log file alongside PDF)")
+var stripIcons = flag.Bool("strip-icons", false, "Remove emoji/icons from output (no replacement text)")
+var replaceIcons = flag.Bool("replace-icons", true, "Replace emoji/icons with semantic text badges (default)")
 var help = flag.Bool("help", false, "Show usage message")
 var ver = flag.Bool("version", false, "Print version and build info")
 var version = "dev"
@@ -217,7 +219,7 @@ func main() {
 	}
 
 	if *presetFont == "" && *fontFamily == "" {
-		*presetFont = "source_serif"
+		*presetFont = "dejavu_serif" // Better Unicode coverage for international text (Polish, Czech, Cyrillic, Greek)
 	}
 
 	if *presetFont != "" {
@@ -238,6 +240,16 @@ func main() {
 		tracerFile = base + ".log"
 	}
 
+	// Determine icon handling mode from flags
+	var iconMode mdtopdf.IconMode
+	if *stripIcons {
+		iconMode = mdtopdf.IconModeStrip
+	} else if *replaceIcons {
+		iconMode = mdtopdf.IconModeReplace
+	} else {
+		iconMode = mdtopdf.IconModeKeep
+	}
+
 	params := mdtopdf.PdfRendererParams{
 		Orientation:     *orientation,
 		Papersz:         *pageSize,
@@ -249,6 +261,7 @@ func main() {
 		DefaultFont:     *fontFamily,
 		PresetFont:      *presetFont,
 		KeepNumbering:   *keepNumbering,
+		IconHandling:    iconMode,
 	}
 
 	pf := mdtopdf.NewPdfRenderer(params)

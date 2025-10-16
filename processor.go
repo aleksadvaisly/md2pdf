@@ -46,9 +46,118 @@ import (
 	"github.com/srwiley/rasterx"
 )
 
+// iconBadges maps emoji/icons to semantic text replacements
+var iconBadges = map[rune]string{
+	// Status
+	'✅': "[correct]",
+	'❌': "[incorrect]",
+	'⚠': "[warning]",
+	'ℹ': "[info]",
+	'🛑': "[stop]",
+	'✔': "[check]",
+
+	// Actions
+	'🚀': "[launch]",
+	'⏱': "[timer]",
+	'📊': "[analytics]",
+	'📈': "[increase]",
+	'📉': "[decrease]",
+	'🔍': "[search]",
+	'🔧': "[fix]",
+	'🛠': "[tools]",
+	'🔄': "[refresh]",
+
+	// Objects
+	'💰': "[money]",
+	'💡': "[idea]",
+	'🎯': "[target]",
+	'🎁': "[bonus]",
+	'🏆': "[achievement]",
+	'📧': "[email]",
+	'📞': "[phone]",
+	'📅': "[calendar]",
+	'📝': "[note]",
+	'📌': "[pin]",
+	'🔗': "[link]",
+
+	// Arrows/Direction
+	'➡': "[next]",
+	'⬅': "[previous]",
+	'⬆': "[up]",
+	'⬇': "[down]",
+	'↗': "[up-right]",
+	'↘': "[down-right]",
+
+	// Emotions
+	'🎉': "[celebration]",
+	'👍': "[like]",
+	'👎': "[dislike]",
+	'😀': "[happy]",
+	'😢': "[sad]",
+	'💪': "[strong]",
+	'👌': "[ok]",
+}
+
+// handleIcons processes emoji/icons according to IconMode setting
+func (r *PdfRenderer) handleIcons(s string) string {
+	runes := []rune(s)
+	result := make([]rune, 0, len(runes))
+
+	for i := 0; i < len(runes); i++ {
+		ch := runes[i]
+
+		// Skip variation selectors (U+FE00-U+FE0F) - they modify previous emoji presentation
+		if ch >= 0xFE00 && ch <= 0xFE0F {
+			continue
+		}
+
+		// Check if this is an icon we know about
+		if badge, found := iconBadges[ch]; found {
+			switch r.IconHandling {
+			case IconModeReplace:
+				// Replace with badge text
+				result = append(result, []rune(badge)...)
+			case IconModeStrip:
+				// Skip entirely (don't add anything)
+				continue
+			case IconModeKeep:
+				// Keep as-is (will be sanitized later if > BMP)
+				result = append(result, ch)
+			}
+			// Skip following variation selector if present
+			if i+1 < len(runes) && runes[i+1] >= 0xFE00 && runes[i+1] <= 0xFE0F {
+				i++
+			}
+		} else if ch > 65535 {
+			// Unknown high Unicode (emoji/special char)
+			switch r.IconHandling {
+			case IconModeReplace:
+				// Unknown icon, replace with generic badge
+				result = append(result, []rune("[icon]")...)
+			case IconModeStrip:
+				// Strip it
+				continue
+			case IconModeKeep:
+				// Will become space in sanitizeText
+				result = append(result, ch)
+			}
+			// Skip following variation selector if present
+			if i+1 < len(runes) && runes[i+1] >= 0xFE00 && runes[i+1] <= 0xFE0F {
+				i++
+			}
+		} else {
+			// Regular character, keep it
+			result = append(result, ch)
+		}
+	}
+
+	return string(result)
+}
+
 // sanitizeText removes Unicode characters outside the Basic Multilingual Plane (BMP)
 // that fpdf cannot handle (code points > 65535). These include most emojis and some
 // special symbols. Replaces them with spaces to preserve text flow.
+// This function is called AFTER handleIcons, so it only deals with unknown/unhandled high Unicode.
 func sanitizeText(s string) string {
 	runes := []rune(s)
 	for i, r := range runes {
@@ -76,6 +185,9 @@ func (r *PdfRenderer) processText(node *ast.Text) {
 		r.cs.peek().cellInnerStringStyle = &currentStyle
 		return
 	}
+
+	// Handle icons first (replace/strip/keep based on IconHandling mode)
+	s = r.handleIcons(s)
 
 	// Sanitize text: fpdf's character width array only supports Unicode BMP (0-65535)
 	// Characters outside this range (like emojis U+1F680) cause index out of bounds panic
@@ -413,16 +525,20 @@ func (r *PdfRenderer) processItem(node *ast.ListItem, entering bool) {
 		labelWidth := r.Pdf.GetStringWidth(bulletLabel)
 		if labelWidth == 0 && checkboxSymbol != "" {
 			// Fallback to ASCII checkbox markers when glyphs are unavailable
+			originalSymbol := checkboxSymbol
 			if strings.EqualFold(checkboxSymbol, "☑") {
 				bulletLabel = "[x]"
 			} else {
 				bulletLabel = "[ ]"
 			}
 			labelWidth = r.Pdf.GetStringWidth(bulletLabel)
+			r.tracer("BULLET_FALLBACK", fmt.Sprintf("Checkbox glyph '%s' unavailable, using ASCII: '%s'", originalSymbol, bulletLabel))
 		}
 		if labelWidth == 0 {
+			originalBullet := bulletLabel
 			bulletLabel = "-"
 			labelWidth = r.Pdf.GetStringWidth(bulletLabel)
+			r.tracer("BULLET_FALLBACK", fmt.Sprintf("Bullet glyph '%s' unavailable, using fallback: '-'", originalBullet))
 		}
 		lineHeight := x.textStyle.Size + x.textStyle.Spacing
 		gapWidth := 0.35 * r.em
