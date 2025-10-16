@@ -25,7 +25,7 @@ RESET=\033[0m
 CYAN=\033[36m
 GREEN=\033[32m
 
-.PHONY: help build install test e2e clean fmt lint tidy run all
+.PHONY: help build install test e2e clean fmt lint tidy run all generate-emoji
 
 # Default target - show help
 help: ## Show this help message
@@ -97,3 +97,15 @@ run: build ## Build and run with example
 
 all: clean tidy fmt build test ## Run clean, tidy, fmt, build and test
 	@echo "$(GREEN)✓ All tasks complete$(RESET)"
+
+generate-emoji: ## Generate grayscale emoji PNGs from Twemoji SVGs
+	@echo "$(GREEN)Generating emoji assets from Twemoji...$(RESET)"
+	@if [ ! -d "../twemoji/assets/svg" ]; then \
+		echo "$(BOLD)ERROR:$(RESET) ../twemoji not found"; \
+		echo "Clone twemoji repository:"; \
+		echo "  cd /Users/aleksander/Documents/projects4"; \
+		echo "  git clone https://github.com/jdecked/twemoji.git"; \
+		exit 1; \
+	fi
+	$(GOCMD) run scripts/generate_emoji.go
+	@echo "$(GREEN)✓ Emoji assets generated$(RESET)"

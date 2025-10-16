@@ -31,6 +31,22 @@ This installs the binary to `~/.local/bin`. Make sure this directory is in your 
 
 ## Building
 
+### Prerequisites
+
+The emoji assets are generated from [Twemoji](https://github.com/jdecked/twemoji). To regenerate emoji:
+
+```sh
+# Clone twemoji as a sibling directory
+cd /path/to/projects
+git clone https://github.com/jdecked/twemoji.git
+cd md2pdf
+make generate-emoji
+```
+
+This converts Twemoji SVGs to grayscale PNGs in `assets/emoji/`. The generated assets are embedded in the binary via `go:embed`, so you only need to regenerate them when updating emoji or changing the Twemoji version.
+
+### Standard Build
+
 With Make:
 ```sh
 make build    # Build binary to bin/md2pdf
