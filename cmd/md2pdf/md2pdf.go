@@ -35,8 +35,9 @@ var pageSize = flag.String("page-size", "A4", "[A3 | A4 | A5]")
 var orientation = flag.String("orientation", "portrait", "[portrait | landscape]")
 var logFile = flag.String("log-file", "", "Path to log file")
 var debug = flag.Bool("debug", false, "Enable debug logging (creates .log file alongside PDF)")
-var stripIcons = flag.Bool("strip-icons", false, "Remove emoji/icons from output (no replacement text)")
-var replaceIcons = flag.Bool("replace-icons", true, "Replace emoji/icons with semantic text badges (default)")
+var embedIcons = flag.Bool("embed-icons", true, "Render emoji/icons as inline SVG images (default)")
+var textIcons = flag.Bool("text-icons", false, "Replace emoji/icons with semantic text badges like [correct], [warning]")
+var stripIcons = flag.Bool("strip-icons", false, "Remove emoji/icons from output entirely")
 var help = flag.Bool("help", false, "Show usage message")
 var ver = flag.Bool("version", false, "Print version and build info")
 var version = "dev"
@@ -240,13 +241,16 @@ func main() {
 		tracerFile = base + ".log"
 	}
 
-	// Determine icon handling mode from flags
+	// Determine icon handling mode from flags (priority order)
 	var iconMode mdtopdf.IconMode
 	if *stripIcons {
 		iconMode = mdtopdf.IconModeStrip
-	} else if *replaceIcons {
-		iconMode = mdtopdf.IconModeReplace
+	} else if *textIcons {
+		iconMode = mdtopdf.IconModeText
+	} else if *embedIcons {
+		iconMode = mdtopdf.IconModeEmbed
 	} else {
+		// Fallback if all flags false
 		iconMode = mdtopdf.IconModeKeep
 	}
 

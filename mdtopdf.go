@@ -78,8 +78,10 @@ const (
 type IconMode int
 
 const (
-	// IconModeReplace replaces icons with semantic text badges like [correct], [warning]
-	IconModeReplace IconMode = iota
+	// IconModeEmbed attempts to render icons as inline images (SVG → PNG) - DEFAULT
+	IconModeEmbed IconMode = iota
+	// IconModeText replaces icons with semantic text badges like [correct], [warning]
+	IconModeText
 	// IconModeStrip removes icons entirely
 	IconModeStrip
 	// IconModeKeep keeps icons as-is (will be sanitized to spaces by fpdf)

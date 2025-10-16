@@ -114,7 +114,12 @@ func (r *PdfRenderer) handleIcons(s string) string {
 		// Check if this is an icon we know about
 		if badge, found := iconBadges[ch]; found {
 			switch r.IconHandling {
-			case IconModeReplace:
+			case IconModeEmbed:
+				// Keep Unicode as-is, let font/fpdf try to render it
+				// If fails (>BMP) → will become space in sanitizeText()
+				// TODO: Implement proper SVG embedding (download Twemoji, rasterize, inline)
+				result = append(result, ch)
+			case IconModeText:
 				// Replace with badge text
 				result = append(result, []rune(badge)...)
 			case IconModeStrip:
@@ -131,7 +136,11 @@ func (r *PdfRenderer) handleIcons(s string) string {
 		} else if ch > 65535 {
 			// Unknown high Unicode (emoji/special char)
 			switch r.IconHandling {
-			case IconModeReplace:
+			case IconModeEmbed:
+				// Keep Unicode, will fail gracefully (become space) in sanitizeText()
+				// TODO: Proper SVG embedding implementation needed
+				result = append(result, ch)
+			case IconModeText:
 				// Unknown icon, replace with generic badge
 				result = append(result, []rune("[icon]")...)
 			case IconModeStrip:
@@ -186,11 +195,13 @@ func (r *PdfRenderer) processText(node *ast.Text) {
 		return
 	}
 
-	// Handle icons first (replace/strip/keep based on IconHandling mode)
+	// Handle icons first (replace/strip/keep/embed based on IconHandling mode)
 	s = r.handleIcons(s)
 
 	// Sanitize text: fpdf's character width array only supports Unicode BMP (0-65535)
 	// Characters outside this range (like emojis U+1F680) cause index out of bounds panic
+	// Note: IconModeEmbed keeps high Unicode for now (will become spaces in sanitizeText)
+	// TODO: Implement proper SVG embedding for IconModeEmbed to avoid sanitization
 	s = sanitizeText(s)
 
 	switch node.Parent.(type) {
