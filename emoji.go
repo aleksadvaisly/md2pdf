@@ -97,6 +97,7 @@ func getEmojiPNGPath(runes []rune) string {
 		return ""
 	}
 
-	filename := strings.Join(parts, "_") + ".png"
+	// Twemoji uses hyphen as separator for multi-codepoint emoji (e.g., 31-20e3.png for 1️⃣)
+	filename := strings.Join(parts, "-") + ".png"
 	return "assets/emoji/" + filename
 }

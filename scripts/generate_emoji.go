@@ -12,7 +12,7 @@ import (
 	"golang.org/x/image/draw"
 )
 
-// Emoji codepoints from processor.go iconBadges map
+// Emoji codepoints to generate
 var emojiCodepoints = []string{
 	// Status
 	"2705", // ✅
@@ -62,6 +62,20 @@ var emojiCodepoints = []string{
 	"1f622", // 😢
 	"1f4aa", // 💪
 	"1f44c", // 👌
+
+	// Keycaps (multi-codepoint: digit + U+20E3)
+	"30-20e3", // 0️⃣
+	"31-20e3", // 1️⃣
+	"32-20e3", // 2️⃣
+	"33-20e3", // 3️⃣
+	"34-20e3", // 4️⃣
+	"35-20e3", // 5️⃣
+	"36-20e3", // 6️⃣
+	"37-20e3", // 7️⃣
+	"38-20e3", // 8️⃣
+	"39-20e3", // 9️⃣
+	"23-20e3", // #️⃣
+	"2a-20e3", // *️⃣
 }
 
 // convertToGrayscaleAlpha converts a color image to grayscale while preserving alpha channel
