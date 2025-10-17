@@ -25,6 +25,7 @@ output.pdf
 # Generated test artifacts
 testdata/*.pdf
 testdata/*.log
+*.log
 
 # System files
 .DS_Store

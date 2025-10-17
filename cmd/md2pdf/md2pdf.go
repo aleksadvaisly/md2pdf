@@ -38,6 +38,7 @@ var debug = flag.Bool("debug", false, "Enable debug logging (creates .log file a
 var embedIcons = flag.Bool("embed-icons", true, "Render emoji/icons as inline SVG images (default)")
 var textIcons = flag.Bool("text-icons", false, "Replace emoji/icons with semantic text badges like [correct], [warning]")
 var stripIcons = flag.Bool("strip-icons", false, "Remove emoji/icons from output entirely")
+var margins = flag.String("margins", "35mm", "Page margins: single value (all sides) or left,top,right,bottom (e.g., '35mm' or '15mm,20mm,15mm,20mm')")
 var help = flag.Bool("help", false, "Show usage message")
 var ver = flag.Bool("version", false, "Print version and build info")
 var version = "dev"
@@ -91,6 +92,62 @@ func loadPresetFont(fontName string) error {
 	}
 
 	return nil
+}
+
+func parseMargins(marginStr string) (left, top, right, bottom float64, err error) {
+	// Parse margin string: "20mm" or "15mm,20mm,15mm,20mm"
+	parts := strings.Split(marginStr, ",")
+
+	parseUnit := func(s string) (float64, error) {
+		s = strings.TrimSpace(s)
+		var value float64
+		if strings.HasSuffix(s, "mm") {
+			val := strings.TrimSuffix(s, "mm")
+			n, err := fmt.Sscanf(val, "%f", &value)
+			if err != nil || n != 1 {
+				return 0, fmt.Errorf("invalid margin value: %s", s)
+			}
+			return value * 2.83465, nil // mm to points (1mm = 2.83465pt)
+		} else if strings.HasSuffix(s, "pt") {
+			val := strings.TrimSuffix(s, "pt")
+			n, err := fmt.Sscanf(val, "%f", &value)
+			if err != nil || n != 1 {
+				return 0, fmt.Errorf("invalid margin value: %s", s)
+			}
+			return value, nil
+		}
+		return 0, fmt.Errorf("margin must end with 'mm' or 'pt': %s", s)
+	}
+
+	if len(parts) == 1 {
+		// Single value for all sides
+		val, err := parseUnit(parts[0])
+		if err != nil {
+			return 0, 0, 0, 0, err
+		}
+		return val, val, val, val, nil
+	} else if len(parts) == 4 {
+		// left, top, right, bottom
+		left, err = parseUnit(parts[0])
+		if err != nil {
+			return 0, 0, 0, 0, err
+		}
+		top, err = parseUnit(parts[1])
+		if err != nil {
+			return 0, 0, 0, 0, err
+		}
+		right, err = parseUnit(parts[2])
+		if err != nil {
+			return 0, 0, 0, 0, err
+		}
+		bottom, err = parseUnit(parts[3])
+		if err != nil {
+			return 0, 0, 0, 0, err
+		}
+		return left, top, right, bottom, nil
+	}
+
+	return 0, 0, 0, 0, fmt.Errorf("margins must be single value or 4 comma-separated values (left,top,right,bottom)")
 }
 
 func main() {
@@ -220,7 +277,7 @@ func main() {
 	}
 
 	if *presetFont == "" && *fontFamily == "" {
-		*presetFont = "dejavu_serif" // Better Unicode coverage for international text (Polish, Czech, Cyrillic, Greek)
+		*presetFont = "source_serif" // LaTeX-style serif font, closest to Latin Modern
 	}
 
 	if *presetFont != "" {
@@ -254,6 +311,12 @@ func main() {
 		iconMode = mdtopdf.IconModeKeep
 	}
 
+	// Parse margins
+	marginLeft, marginTop, marginRight, marginBottom, err := parseMargins(*margins)
+	if err != nil {
+		log.Fatalf("Invalid margins: %v", err)
+	}
+
 	params := mdtopdf.PdfRendererParams{
 		Orientation:     *orientation,
 		Papersz:         *pageSize,
@@ -266,6 +329,10 @@ func main() {
 		PresetFont:      *presetFont,
 		KeepNumbering:   *keepNumbering,
 		IconHandling:    iconMode,
+		MarginLeft:      marginLeft,
+		MarginTop:       marginTop,
+		MarginRight:     marginRight,
+		MarginBottom:    marginBottom,
 	}
 
 	pf := mdtopdf.NewPdfRenderer(params)
