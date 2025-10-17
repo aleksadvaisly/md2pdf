@@ -31,5 +31,12 @@ testdata/*.log
 .DS_Store
 Thumbs.db
 
+# Patch/merge artifacts
+*.rej
+*.orig
+
+# Binary font files
+*.ttf
+
 # Work notes
 docs/work/
