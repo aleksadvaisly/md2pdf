@@ -147,6 +147,8 @@ type PdfRenderer struct {
 	Theme                     Theme
 	BackgroundColor           Color
 	IconHandling              IconMode // How to handle emoji/icons
+	RemoveUnknownIcons        bool     // Strip unsupported emoji instead of failing
+	AnchorLinks               bool     // Keep internal anchor links in PDF (default: false)
 	documentMatter            ast.DocumentMatters // keep track of front/main/back matter.
 	Extensions                parser.Extensions
 	ColumnWidths              map[ast.Node][]float64
@@ -255,8 +257,14 @@ func (r *PdfRenderer) SetLightTheme() {
 	r.Link = Styler{Font: r.DefaultFont, Style: "u", Size: 10, Spacing: 1.4,
 		TextColor: Color{0, 0, 139}}
 
+	// Use DejaVuSansMono for code blocks if preset font is active, otherwise Courier
+	codeFont := "Courier"
+	if r.DefaultFont != "Times" {
+		codeFont = "DejaVuSansMono"
+	}
+
 	// Backticked text
-	r.Backtick = Styler{Font: "Courier", Style: "", Size: 9, Spacing: 1.2,
+	r.Backtick = Styler{Font: codeFont, Style: "", Size: 9, Spacing: 1.2,
 		TextColor: Color{37, 27, 14}, FillColor: Color{245, 245, 245}}
 
 	// Quoted Text
@@ -265,7 +273,7 @@ func (r *PdfRenderer) SetLightTheme() {
 		TextColor: Color{60, 60, 60}, FillColor: Color{250, 250, 250}}
 
 	// Code text
-	r.Code = Styler{Font: "Courier", Style: "", Size: 9, Spacing: 1.2,
+	r.Code = Styler{Font: codeFont, Style: "", Size: 9, Spacing: 1.2,
 		TextColor: Color{37, 27, 14}, FillColor: Color{245, 245, 245}}
 
 	// Headings - LaTeX-inspired sizes (more conservative than default)
@@ -307,12 +315,18 @@ func (r *PdfRenderer) SetDarkTheme() {
 	r.Link = Styler{Font: r.DefaultFont, Style: "u", Size: 10, Spacing: 1.4,
 		TextColor: Color{100, 149, 237}}
 
+	// Use DejaVuSansMono for code blocks if preset font is active, otherwise Courier
+	codeFont := "Courier"
+	if r.DefaultFont != "Times" {
+		codeFont = "DejaVuSansMono"
+	}
+
 	// Backticked text
-	r.Backtick = Styler{Font: "Courier", Style: "", Size: 9, Spacing: 1.2,
+	r.Backtick = Styler{Font: codeFont, Style: "", Size: 9, Spacing: 1.2,
 		TextColor: Colorlookup("lightgrey"), FillColor: Color{40, 40, 40}}
 
 	// Code text
-	r.Code = Styler{Font: "Courier", Style: "", Size: 9, Spacing: 1.2,
+	r.Code = Styler{Font: codeFont, Style: "", Size: 9, Spacing: 1.2,
 		TextColor: Colorlookup("lightgrey"), FillColor: Color{40, 40, 40}}
 
 	// Headings - LaTeX-inspired sizes (more conservative than default)
@@ -363,6 +377,8 @@ type PdfRendererParams struct {
 	CustomThemeFile                                        string
 	KeepNumbering                                          bool
 	IconHandling                                           IconMode
+	RemoveUnknownIcons                                     bool
+	AnchorLinks                                            bool
 	MarginLeft, MarginTop, MarginRight, MarginBottom       float64
 }
 
@@ -406,6 +422,8 @@ func NewPdfRenderer(params PdfRendererParams) *PdfRenderer {
 	r.KeepNumbering = params.KeepNumbering
 	r.orderedListCounter = 0
 	r.IconHandling = params.IconHandling
+	r.RemoveUnknownIcons = params.RemoveUnknownIcons
+	r.AnchorLinks = params.AnchorLinks
 
 	// Set default font (fallback to Times if not specified)
 	r.DefaultFont = "Times"
@@ -524,6 +542,21 @@ func NewPdfRenderer(params PdfRendererParams) *PdfRenderer {
 				}
 			}
 			r.DefaultFont = fontInfo.name
+
+			// Always load DejaVu Sans Mono for code blocks when using preset fonts
+			// This ensures box-drawing characters and other technical symbols render correctly
+			monoFonts := map[string]string{
+				"":   "DejaVuSansMono.ttf",
+				"B":  "DejaVuSansMono-Bold.ttf",
+				"I":  "DejaVuSansMono-Oblique.ttf",
+				"BI": "DejaVuSansMono-BoldOblique.ttf",
+			}
+			for style, filename := range monoFonts {
+				fullPath := filepath.Join("resources/fonts/dejavu_sans_mono", filename)
+				if err := loadFontSafely(r.Pdf, "DejaVuSansMono", style, fullPath); err != nil {
+					log.Printf("Warning: Failed to load DejaVuSansMono font for code blocks: %v", err)
+				}
+			}
 		}
 	}
 
@@ -795,8 +828,12 @@ func (r *PdfRenderer) writeSegmented(s Styler, t string) {
 
 			imgData, err := emojiFS.ReadFile(pngPath)
 			if err != nil {
-				r.tracer("emoji", fmt.Sprintf("failed to load %s: %v", pngPath, err))
-				r.write(s, " ")
+				if r.RemoveUnknownIcons {
+					r.tracer("emoji", fmt.Sprintf("skipping unknown emoji %s: %v", pngPath, err))
+					continue
+				}
+				r.tracer("emoji", fmt.Sprintf("ERROR: failed to load %s: %v", pngPath, err))
+				r.write(s, "?")
 				continue
 			}
 
@@ -819,7 +856,30 @@ func (r *PdfRenderer) writeSegmented(s Styler, t string) {
 }
 
 func (r *PdfRenderer) multiCell(s Styler, t string) {
-	r.Pdf.MultiCell(0, s.Size+s.Spacing, t, "", "", true)
+	// MultiCell has UTF-8 encoding issues with certain fonts (e.g., DejaVuSansMono)
+	// Split into lines and use Write for each line to ensure proper UTF-8 handling
+	// Sanitize text first to remove high Unicode characters that fpdf can't handle
+
+	// Remove characters outside BMP (Basic Multilingual Plane) that fpdf cannot handle
+	runes := []rune(t)
+	for i, r := range runes {
+		if r > 65535 {
+			runes[i] = ' ' // Replace with space to preserve text flow
+		}
+	}
+	t = string(runes)
+
+	lineHeight := s.Size + s.Spacing
+
+	// fpdf's MultiCell wraps at spaces, breaking box-drawing alignment
+	// Process each line individually with CellFormat using "L" alignment
+	// which preserves exact spacing in monospace fonts
+	lines := strings.Split(t, "\n")
+	for _, line := range lines {
+		// CellFormat with width=0 (full line), no border, ln=1 (newline after)
+		// Border="" means no border, ln=1 means move to next line, align="L" for left
+		r.Pdf.CellFormat(0, lineHeight, line, "", 1, "L", false, 0, "")
+	}
 }
 
 func (r *PdfRenderer) writeLink(s Styler, display, url string) {

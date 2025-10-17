@@ -106,8 +106,10 @@ func (r *PdfRenderer) handleIcons(s string) string {
 	for i := 0; i < len(runes); i++ {
 		ch := runes[i]
 
-		// Skip variation selectors (U+FE00-U+FE0F) - they modify previous emoji presentation
+		// Replace variation selectors with space to preserve text alignment
+		// (U+FE00-U+FE0F) - they modify previous emoji presentation
 		if ch >= 0xFE00 && ch <= 0xFE0F {
+			result = append(result, ' ')
 			continue
 		}
 
@@ -121,15 +123,16 @@ func (r *PdfRenderer) handleIcons(s string) string {
 				// Replace with badge text
 				result = append(result, []rune(badge)...)
 			case IconModeStrip:
-				// Skip entirely (don't add anything)
-				continue
+				// Replace with space to preserve text alignment in code blocks
+				result = append(result, ' ')
 			case IconModeKeep:
 				// Keep as-is (will be sanitized later if > BMP)
 				result = append(result, ch)
 			}
-			// Skip following variation selector if present
+			// Replace following variation selector with space if present
 			if i+1 < len(runes) && runes[i+1] >= 0xFE00 && runes[i+1] <= 0xFE0F {
 				i++
+				result = append(result, ' ')
 			}
 		} else if ch > 65535 {
 			// Unknown high Unicode (emoji/special char)
@@ -141,15 +144,16 @@ func (r *PdfRenderer) handleIcons(s string) string {
 				// Unknown icon, replace with generic badge
 				result = append(result, []rune("[icon]")...)
 			case IconModeStrip:
-				// Strip it
-				continue
+				// Replace with space to preserve text alignment in code blocks
+				result = append(result, ' ')
 			case IconModeKeep:
 				// Will become space in sanitizeText
 				result = append(result, ch)
 			}
-			// Skip following variation selector if present
+			// Replace following variation selector with space if present
 			if i+1 < len(runes) && runes[i+1] >= 0xFE00 && runes[i+1] <= 0xFE0F {
 				i++
+				result = append(result, ' ')
 			}
 		} else {
 			// Regular character, keep it
@@ -240,6 +244,8 @@ func (r *PdfRenderer) processMath(node *ast.Math) {
 func (r *PdfRenderer) outputUnhighlightedCodeBlock(codeBlock string) {
 	r.cr() // start on next line!
 	r.setStyler(r.Backtick)
+	// Handle icons first (replace/strip/keep/embed based on IconHandling mode)
+	codeBlock = r.handleIcons(codeBlock)
 	r.multiCell(r.Backtick, codeBlock)
 }
 
@@ -270,7 +276,9 @@ func (r *PdfRenderer) processCodeblock(node ast.CodeBlock) {
 	}
 	syntaxDef, _ := highlight.ParseDef(syntaxFile)
 	h := highlight.NewHighlighter(syntaxDef)
-	linesWrapped := wordwrap.WrapString(string(node.Literal), 90)
+	// Handle icons first (replace/strip/keep/embed based on IconHandling mode)
+	codeText := r.handleIcons(string(node.Literal))
+	linesWrapped := wordwrap.WrapString(codeText, 90)
 	matches := h.HighlightString(linesWrapped)
 	r.cr()
 	lines := strings.Split(linesWrapped, "\n")
@@ -604,7 +612,23 @@ func (r *PdfRenderer) processStrong(node ast.Node, entering bool) {
 func (r *PdfRenderer) processLink(node ast.Link, entering bool) {
 	destination := string(node.Destination)
 	if entering {
-		if r.InputBaseURL != "" && !strings.HasPrefix(destination, "http") {
+		// Check if this is an anchor link (internal #anchor) and AnchorLinks is disabled
+		isAnchorLink := strings.HasPrefix(destination, "#")
+		if isAnchorLink && !r.AnchorLinks {
+			// Render as plain text (no link styling) when anchor links are disabled
+			x := &containerState{
+				textStyle:         r.Normal,
+				listkind:          notlist,
+				leftMargin:        r.cs.peek().leftMargin,
+				contentLeftMargin: r.cs.peek().leftMargin,
+				destination:       ""}
+			r.cs.push(x)
+			r.tracer("Link (entering - anchor disabled)",
+				fmt.Sprintf("Rendering as plain text: %v", destination))
+			return
+		}
+
+		if r.InputBaseURL != "" && !strings.HasPrefix(destination, "http") && !isAnchorLink {
 			destination = r.InputBaseURL + "/" + strings.Replace(destination, "./", "", 1)
 		}
 		x := &containerState{

@@ -41,6 +41,7 @@ help: ## Show this help message
 build: ## Build the binary to bin/
 	@echo "$(GREEN)Building $(BINARY_NAME)...$(RESET)"
 	@mkdir -p $(BIN_DIR)
+	@rm -f ./$(BINARY_NAME)
 	$(GOBUILD) $(BUILD_FLAGS) $(LDFLAGS) -o $(BIN_DIR)/$(BINARY_NAME) $(CMD_PATH)
 	@echo "$(GREEN)✓ Binary built: $(BIN_DIR)/$(BINARY_NAME)$(RESET)"
 

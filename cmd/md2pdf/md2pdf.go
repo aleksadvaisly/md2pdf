@@ -38,6 +38,8 @@ var debug = flag.Bool("debug", false, "Enable debug logging (creates .log file a
 var embedIcons = flag.Bool("embed-icons", true, "Render emoji/icons as inline SVG images (default)")
 var textIcons = flag.Bool("text-icons", false, "Replace emoji/icons with semantic text badges like [correct], [warning]")
 var stripIcons = flag.Bool("strip-icons", false, "Remove emoji/icons from output entirely")
+var removeUnknownIcons = flag.Bool("remove-unknown-icons", true, "Strip unknown/unsupported emoji instead of failing (default: true)")
+var anchorLinks = flag.Bool("anchor-links", false, "Keep internal anchor links like [text](#anchor) in PDF (default: false, strips anchors)")
 var margins = flag.String("margins", "35mm", "Page margins: single value (all sides) or left,top,right,bottom (e.g., '35mm' or '15mm,20mm,15mm,20mm')")
 var help = flag.Bool("help", false, "Show usage message")
 var ver = flag.Bool("version", false, "Print version and build info")
@@ -318,21 +320,23 @@ func main() {
 	}
 
 	params := mdtopdf.PdfRendererParams{
-		Orientation:     *orientation,
-		Papersz:         *pageSize,
-		PdfFile:         *output,
-		TracerFile:      tracerFile,
-		Opts:            opts,
-		Theme:           theme,
-		CustomThemeFile: themeFile,
-		DefaultFont:     *fontFamily,
-		PresetFont:      *presetFont,
-		KeepNumbering:   *keepNumbering,
-		IconHandling:    iconMode,
-		MarginLeft:      marginLeft,
-		MarginTop:       marginTop,
-		MarginRight:     marginRight,
-		MarginBottom:    marginBottom,
+		Orientation:        *orientation,
+		Papersz:            *pageSize,
+		PdfFile:            *output,
+		TracerFile:         tracerFile,
+		Opts:               opts,
+		Theme:              theme,
+		CustomThemeFile:    themeFile,
+		DefaultFont:        *fontFamily,
+		PresetFont:         *presetFont,
+		KeepNumbering:      *keepNumbering,
+		IconHandling:       iconMode,
+		RemoveUnknownIcons: *removeUnknownIcons,
+		AnchorLinks:        *anchorLinks,
+		MarginLeft:         marginLeft,
+		MarginTop:          marginTop,
+		MarginRight:        marginRight,
+		MarginBottom:       marginBottom,
 	}
 
 	pf := mdtopdf.NewPdfRenderer(params)

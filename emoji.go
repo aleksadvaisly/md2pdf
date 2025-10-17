@@ -18,11 +18,40 @@ type TextSegment struct {
 }
 
 func isEmojiRune(r rune) bool {
+	// Check if this rune is in the iconBadges map (explicitly defined emoji)
 	_, exists := iconBadges[r]
 	if exists {
 		return true
 	}
-	return r > 0x1F000
+
+	// Unicode blocks that contain emoji-like characters:
+	// Arrows (U+2190-U+21FF): ←, →, ↑, ↓, ↔️, ↕️, etc.
+	if r >= 0x2190 && r <= 0x21FF {
+		return true
+	}
+
+	// Miscellaneous Technical - Time symbols (U+23E9-U+23FF): ⏱️, ⏳, ⏰, ⏲️, etc.
+	if r >= 0x23E9 && r <= 0x23FF {
+		return true
+	}
+
+	// Miscellaneous Symbols (U+2600-U+26FF): ☀️, ☁️, ☂️, ⚠️, ☎️, ✈️, ⚡, ❄️, etc.
+	if r >= 0x2600 && r <= 0x26FF {
+		return true
+	}
+
+	// Dingbats (U+2700-U+27BF): ✂️, ✈️, ✓, ✗, ✨, ✔️, ❌, etc.
+	if r >= 0x2700 && r <= 0x27BF {
+		return true
+	}
+
+	// Miscellaneous Symbols and Arrows (U+2B00-U+2BFF): ⬆️, ⬇️, ⬅️, ➡️, etc.
+	if r >= 0x2B00 && r <= 0x2BFF {
+		return true
+	}
+
+	// Standard emoji range (U+1F000 and above): 🚀, 💰, 😀, etc.
+	return r >= 0x1F000
 }
 
 func isEmojiGrapheme(runes []rune) bool {
