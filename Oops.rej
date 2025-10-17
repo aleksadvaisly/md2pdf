@@ -1,0 +1,13 @@
+@@ -308,10 +309,10 @@
+ 		TextColor: Color{100, 149, 237}}
+ 
+ 	// Backticked text
+-	r.Backtick = Styler{Font: "Courier", Style: "", Size: 9, Spacing: 1.2,
++	r.Backtick = Styler{Font: "DejaVuSansMono", Style: "", Size: 9, Spacing: 1.2,
+ 		TextColor: Colorlookup("lightgrey"), FillColor: Color{40, 40, 40}}
+ 
+ 	// Code text
+-	r.Code = Styler{Font: "Courier", Style: "", Size: 9, Spacing: 1.2,
++	r.Code = Styler{Font: "DejaVuSansMono", Style: "", Size: 9, Spacing: 1.2,
+ 		TextColor: Colorlookup("lightgrey"), FillColor: Color{40, 40, 40}}
+ 
