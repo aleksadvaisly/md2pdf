@@ -29,6 +29,7 @@ import (
 	"math"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 
 	// "reflect"
@@ -716,50 +717,75 @@ func (r *PdfRenderer) processImage(node ast.Image, entering bool) {
 		}
 		mtype, err := mimetype.DetectFile(destination)
 		if mtype.Is("image/svg+xml") {
-			re := regexp.MustCompile(`<svg\s*.*\s*width="([0-9\.]+)"\sheight="([0-9\.]+)".*>`)
-			contents, _ := os.ReadFile(destination)
-			matches := re.FindStringSubmatch(string(contents))
-			tf, err := os.CreateTemp(tempDir, "*.svg")
-			if err != nil {
-				log.Println(err)
-				return
-			}
-
-			if _, err := tf.Write(contents); err != nil {
-				tf.Close()
-				log.Println(err)
-				return
-			}
-			if err := tf.Close(); err != nil {
-				log.Println(err)
-				return
-			}
-			os.Rename(destination, tf.Name())
-			destination = tf.Name()
-			width, _ := strconv.ParseFloat(matches[1], 64)
-			height, _ := strconv.ParseFloat(matches[2], 64)
-
-			icon, err := oksvg.ReadIconStream(tf)
-			if err != nil {
-				log.Println(err)
-				return
-			}
-			icon.SetTarget(0, 0, float64(width), float64(height))
-			rgba := image.NewRGBA(image.Rect(0, 0, int(width), int(height)))
-			icon.Draw(rasterx.NewDasher(int(width), int(height), rasterx.NewScannerGV(int(width), int(height), rgba, rgba.Bounds())), 1)
+			// Ensure temp directory exists before creating temp file
+			os.MkdirAll(tempDir, 0755)
 
 			outputFileName := destination + ".png"
-			outputFile, err := os.Create(outputFileName)
-			if err != nil {
-				log.Println(err)
-				return
-			}
-			defer outputFile.Close()
 
-			if err := png.Encode(outputFile, rgba); err != nil {
-				log.Println(err)
-				return
+			// Try external SVG converters (support text and all SVG features)
+			// Priority: rsvg-convert > convert (ImageMagick) > oksvg (basic shapes only)
+			converted := false
+
+			// Try rsvg-convert first (best SVG support)
+			if _, err := exec.LookPath("rsvg-convert"); err == nil {
+				cmd := exec.Command("rsvg-convert", "-o", outputFileName, destination)
+				if err := cmd.Run(); err == nil {
+					converted = true
+					fmt.Println("Converted SVG using rsvg-convert")
+				}
 			}
+
+			// Try ImageMagick convert as fallback
+			if !converted {
+				if _, err := exec.LookPath("convert"); err == nil {
+					cmd := exec.Command("convert", destination, outputFileName)
+					if err := cmd.Run(); err == nil {
+						converted = true
+						fmt.Println("Converted SVG using ImageMagick")
+					}
+				}
+			}
+
+			// Final fallback: use oksvg (note: doesn't support text elements)
+			if !converted {
+				fmt.Println("Warning: Using oksvg for SVG conversion - text elements not supported")
+
+				re := regexp.MustCompile(`<svg\s*.*\s*width="([0-9\.]+)"\sheight="([0-9\.]+)".*>`)
+				contents, _ := os.ReadFile(destination)
+				matches := re.FindStringSubmatch(string(contents))
+
+				svgFile, err := os.Open(destination)
+				if err != nil {
+					log.Println(err)
+					return
+				}
+				defer svgFile.Close()
+
+				icon, err := oksvg.ReadIconStream(svgFile)
+				if err != nil {
+					log.Println(err)
+					return
+				}
+
+				width, _ := strconv.ParseFloat(matches[1], 64)
+				height, _ := strconv.ParseFloat(matches[2], 64)
+				icon.SetTarget(0, 0, float64(width), float64(height))
+				rgba := image.NewRGBA(image.Rect(0, 0, int(width), int(height)))
+				icon.Draw(rasterx.NewDasher(int(width), int(height), rasterx.NewScannerGV(int(width), int(height), rgba, rgba.Bounds())), 1)
+
+				outputFile, err := os.Create(outputFileName)
+				if err != nil {
+					log.Println(err)
+					return
+				}
+				defer outputFile.Close()
+
+				if err := png.Encode(outputFile, rgba); err != nil {
+					log.Println(err)
+					return
+				}
+			}
+
 			destination = outputFileName
 		}
 		r.tracer("Image (entering)",

@@ -35,6 +35,11 @@ Thumbs.db
 *.rej
 *.orig
 
+# Backup files
+*.bak
+*.bak[0-9]
+*.bak[0-9][0-9]
+
 # Binary font files
 *.ttf
 
